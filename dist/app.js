@@ -46,7 +46,7 @@ function draw(){
  const s=currentFrame(),kind=s[6];
  window.SystemsDiagram.render({
   label:current.title+'：'+s[0]+'；'+RELATIONS[kind]+'；'+relationText(s),
-  nodes:nodes(),frame:s,playing:!!timer,motionMode,motionVersion,speed,dark,
+  nodes:nodes(),icons:scenario().icons,frame:s,playing:!!timer,motionMode,motionVersion,speed,dark,
   stageKey:current.id+':'+(fault?'alternate':'main')+':'+step,
   reducedMotion:motionPreference.matches
  });
