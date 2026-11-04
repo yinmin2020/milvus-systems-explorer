@@ -6,9 +6,9 @@ A Chinese interactive Milvus **3.0** systems teaching site (MVP). Shell/engine f
 
 ## 在线地址 / Pages
 
-占位 URL：<https://yinmin2020.github.io/milvus-systems-explorer/>
+站点：<https://yinmin2020.github.io/milvus-systems-explorer/>
 
-首次部署：仓库 **Settings → Pages → Build and deployment → Source** 选 **GitHub Actions**，然后在 Actions 中重跑工作流（若需要）。
+当前通过 **`gh-pages` 分支根目录**（从 `dist/` 发布）部署。Actions 工作流原稿在 `docs/pages.yml.example`；本机 OAuth token 缺 `workflow` 作用域时无法推送 `.github/workflows/*`。若要改用 Actions：给 `gh` 授权 `workflow` 后把示例复制为 `.github/workflows/pages.yml` 并推送，再在 **Settings → Pages → Source** 选 **GitHub Actions**。
 
 ## 主题（8）
 
