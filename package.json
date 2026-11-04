@@ -1,0 +1,21 @@
+{
+  "name": "milvus-systems-explorer",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node check-content.cjs && node check-isokit.cjs && node check-motion.cjs"
+  },
+  "dependencies": {
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-isokit": "0.5.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  },
+  "description": "Milvus 3.0 Systems Explorer MVP",
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

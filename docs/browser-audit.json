@@ -1,0 +1,2108 @@
+[
+  {
+    "id": "cache",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "A 的读取尚未完成",
+    "to": "1"
+  },
+  {
+    "id": "cache",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "request",
+    "state": "第 1 次访问未命中",
+    "to": "3"
+  },
+  {
+    "id": "cache",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "A 所在行已缓存 · 首次读取完成",
+    "to": "2"
+  },
+  {
+    "id": "cache",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "2 次访问：1 miss / 1 hit",
+    "to": "0"
+  },
+  {
+    "id": "cache",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "缓存 [A,B] · A 最久未用",
+    "to": "2"
+  },
+  {
+    "id": "cache",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "缓存 [A,B] · C 未命中",
+    "to": "1"
+  },
+  {
+    "id": "cache",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "缓存 [B,C] · A 已被替换",
+    "to": "2"
+  },
+  {
+    "id": "cache",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "缓存 [B,C] · 再次请求主存 A",
+    "to": "1"
+  },
+  {
+    "id": "vm",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "check",
+    "state": "VA = VPN + 页内偏移",
+    "to": "1"
+  },
+  {
+    "id": "vm",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "check",
+    "state": "PTE 有效 · present = 1",
+    "to": "2"
+  },
+  {
+    "id": "vm",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "TLB 保存 VPN→PFN 与权限",
+    "to": "1"
+  },
+  {
+    "id": "vm",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "物理地址已生成 · 访问获准",
+    "to": "3"
+  },
+  {
+    "id": "vm",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "check",
+    "state": "映射合法 · 尚无驻留物理页",
+    "to": "1"
+  },
+  {
+    "id": "vm",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "原指令暂停 · 内核验证映射",
+    "to": "2"
+  },
+  {
+    "id": "vm",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "物理页已准备 · PTE 已更新",
+    "to": "3"
+  },
+  {
+    "id": "vm",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "重试翻译与访问 · 并非所有缺页都可恢复",
+    "to": "0"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "预测路径 A · 尚未验证",
+    "to": "1"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "多条指令在途 · 结果仍可被丢弃",
+    "to": "2"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "预测正确 · 尚未提交",
+    "to": "3"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "normal",
+    "stage": 4,
+    "issues": [],
+    "kind": "local",
+    "state": "本线程架构状态已提交"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "预测 A · 分支结果未知",
+    "to": "1"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "路径 A 的年轻指令在途",
+    "to": "2"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "错误路径被丢弃 · 重定向到 B",
+    "to": "0"
+  },
+  {
+    "id": "pipeline",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "开始正确路径 · 仍须执行后按序提交",
+    "to": "1"
+  },
+  {
+    "id": "schedule",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "A: READY · B: READY",
+    "to": "0"
+  },
+  {
+    "id": "schedule",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "A: RUNNING · B: READY",
+    "to": "1"
+  },
+  {
+    "id": "schedule",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "A: BLOCKED · B: RUNNING",
+    "to": "2"
+  },
+  {
+    "id": "schedule",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "A: READY · B: RUNNING",
+    "to": "0"
+  },
+  {
+    "id": "schedule",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "A: READY 低优先级 · B: READY 高优先级",
+    "to": "0"
+  },
+  {
+    "id": "schedule",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "B: RUNNING · A: READY",
+    "to": "1"
+  },
+  {
+    "id": "schedule",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "A 仍可运行 · 高优先级队列非空",
+    "to": "0"
+  },
+  {
+    "id": "schedule",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "A: READY · 等待时间持续增加",
+    "to": "1"
+  },
+  {
+    "id": "sync",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "owner(m) = A",
+    "to": "3"
+  },
+  {
+    "id": "sync",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "balance 与 ledger 已一致更新",
+    "to": "1"
+  },
+  {
+    "id": "sync",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "owner(m) = none · A 的写入待同步读取",
+    "to": "3"
+  },
+  {
+    "id": "sync",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "owner(m) = B · B 可见 A 的受保护写入",
+    "to": "3"
+  },
+  {
+    "id": "sync",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "owner(X) = A · Y 空闲",
+    "to": "1"
+  },
+  {
+    "id": "sync",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "owner(X) = A · owner(Y) = B",
+    "to": "3"
+  },
+  {
+    "id": "sync",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "A 等 Y · A 仍持 X",
+    "to": "3"
+  },
+  {
+    "id": "sync",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "A 与 B 循环等待 · DEADLOCK",
+    "to": "1"
+  },
+  {
+    "id": "async",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "A: WAITING · 没有读取结果",
+    "to": "1"
+  },
+  {
+    "id": "async",
+    "scenario": "normal",
+    "stage": 2,
+    "issues": [],
+    "kind": "local",
+    "state": "A 仍等待 · 线程可服务其他任务"
+  },
+  {
+    "id": "async",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "有就绪事件 · 业务尚未完成",
+    "to": "2"
+  },
+  {
+    "id": "async",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "A: RUNNING · 可能再次 WAITING",
+    "to": "0"
+  },
+  {
+    "id": "async",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "currentVersion = 7 · version 7: WAITING",
+    "to": "1"
+  },
+  {
+    "id": "async",
+    "scenario": "fault",
+    "stage": 2,
+    "issues": [],
+    "kind": "local",
+    "state": "currentVersion = 8 · version 7 已取消"
+  },
+  {
+    "id": "async",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "收到 v7 回调 · 当前仍为 v8",
+    "to": "1"
+  },
+  {
+    "id": "async",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "reject",
+    "state": "v7 不提交 · v8 状态保持有效",
+    "to": "2"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "排队 [A,B,C] · 3 / 3",
+    "to": "1"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "排队 [B,C] · 2 / 3 · 运行 A",
+    "to": "2"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "排队 [B,C,D] · 3 / 3",
+    "to": "1"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "reject",
+    "state": "E 未入队 · 队列仍 3 / 3",
+    "to": "1"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "排队 [A,B,C] · 无容量上限",
+    "to": "1"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "排队 [B,C] · 运行 A",
+    "to": "2"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "排队 [B,C,D,E,F] · 5 个等待",
+    "to": "1"
+  },
+  {
+    "id": "backpressure",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "积压增加 · 部分 deadline 将耗尽",
+    "to": "3"
+  },
+  {
+    "id": "measure",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "同一工作负载 · 保留基线",
+    "to": "1"
+  },
+  {
+    "id": "measure",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "尾延迟、队列与资源数据齐备",
+    "to": "2"
+  },
+  {
+    "id": "measure",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "check",
+    "state": "假设：锁等待限制收益",
+    "to": "3"
+  },
+  {
+    "id": "measure",
+    "scenario": "normal",
+    "stage": 4,
+    "issues": [],
+    "kind": "local",
+    "state": "基线与候选结果比较 · 检查回归"
+  },
+  {
+    "id": "measure",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "存在少量慢请求",
+    "to": "1"
+  },
+  {
+    "id": "measure",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "平均延迟看似正常 · 尾部未知",
+    "to": "2"
+  },
+  {
+    "id": "measure",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "遗漏慢请求体验与超时风险"
+  },
+  {
+    "id": "measure",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "compare",
+    "state": "平均正常 · 尾部恶化被确认",
+    "to": "2"
+  },
+  {
+    "id": "txn",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "A=100 · B=100",
+    "to": "1"
+  },
+  {
+    "id": "txn",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "事务内总额仍为 200 · 尚未提交",
+    "to": "2"
+  },
+  {
+    "id": "txn",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "提交决定已记录",
+    "to": "3"
+  },
+  {
+    "id": "txn",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "对外可见：A=90 · B=110",
+    "to": "0"
+  },
+  {
+    "id": "txn",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "A=100 · B=100",
+    "to": "1"
+  },
+  {
+    "id": "txn",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "事务内 A=90 · B=100 · 未提交",
+    "to": "2"
+  },
+  {
+    "id": "txn",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "reject",
+    "state": "B=100 · 整个事务待回滚",
+    "to": "2"
+  },
+  {
+    "id": "txn",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "对外 A=100 · B=100",
+    "to": "0"
+  },
+  {
+    "id": "isolation",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "T1 获得 X(A)",
+    "to": "1"
+  },
+  {
+    "id": "isolation",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "T2: BLOCKED",
+    "to": "1"
+  },
+  {
+    "id": "isolation",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "T1 已提交 A=90 · 即将释放锁",
+    "to": "2"
+  },
+  {
+    "id": "isolation",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "T2 获得 X(A) · 可以继续",
+    "to": "3"
+  },
+  {
+    "id": "isolation",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "T1 首次读到 100",
+    "to": "0"
+  },
+  {
+    "id": "isolation",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "T2 未提交 A=90",
+    "to": "2"
+  },
+  {
+    "id": "isolation",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "已提交值 A=90"
+  },
+  {
+    "id": "isolation",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "T1 两次读到 100 → 90",
+    "to": "0"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "R 可见值 = 100",
+    "to": "0"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "v1 与未提交的 v2 共存",
+    "to": "3"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "normal",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "新快照可见 90"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "R 仍读 100 · 稍后清理 v1",
+    "to": "0"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "A 计划下班 · B=值班",
+    "to": "0"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "两事务都认为另一人会留守",
+    "to": "2"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "当前 A=下班 · B=值班",
+    "to": "3"
+  },
+  {
+    "id": "mvcc",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "A=下班 · B=下班 · 写偏差",
+    "to": "3"
+  },
+  {
+    "id": "occ",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "expectedVersion = 7",
+    "to": "0"
+  },
+  {
+    "id": "occ",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "currentVersion = 8",
+    "to": "1"
+  },
+  {
+    "id": "occ",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "reject",
+    "state": "7 ≠ 8 · T1 未写入",
+    "to": "3"
+  },
+  {
+    "id": "occ",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "重新读取 v8 · 不复用旧结果",
+    "to": "1"
+  },
+  {
+    "id": "occ",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "T1 基线 = 100 / v7",
+    "to": "0"
+  },
+  {
+    "id": "occ",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "待写结果 = 110",
+    "to": "3"
+  },
+  {
+    "id": "occ",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "共享值 = 90 / v8",
+    "to": "1"
+  },
+  {
+    "id": "occ",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "丢失 T2 更新 · 最终 110",
+    "to": "1"
+  },
+  {
+    "id": "wal",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "pageLSN=42 · 内存页已脏",
+    "to": "1"
+  },
+  {
+    "id": "wal",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "durableLSN=43 ≥ commitLSN=43",
+    "to": "2"
+  },
+  {
+    "id": "wal",
+    "scenario": "normal",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "提交记录已持久化 · 可以确认成功"
+  },
+  {
+    "id": "wal",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "durableLSN ≥ pageLSN=42",
+    "to": "3"
+  },
+  {
+    "id": "wal",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "内存值 90 · pageLSN=42",
+    "to": "1"
+  },
+  {
+    "id": "wal",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "durableLSN=42 · 无持久提交证据",
+    "to": "2"
+  },
+  {
+    "id": "wal",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "事务结果不能判为已提交"
+  },
+  {
+    "id": "wal",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "本例可见值仍为 100",
+    "to": "3"
+  },
+  {
+    "id": "recovery",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "定位必要日志 · 不假定检查点前全已完成",
+    "to": "2"
+  },
+  {
+    "id": "recovery",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "页面和事务状态逐步重建",
+    "to": "2"
+  },
+  {
+    "id": "recovery",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "未提交结果不能作为成功结果",
+    "to": "3"
+  },
+  {
+    "id": "recovery",
+    "scenario": "normal",
+    "stage": 4,
+    "issues": [],
+    "kind": "local",
+    "state": "服务恢复 · 保留安全状态"
+  },
+  {
+    "id": "recovery",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "磁盘 pageLSN=40 · 需要重做 42",
+    "to": "2"
+  },
+  {
+    "id": "recovery",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "该页持久 pageLSN=42",
+    "to": "3"
+  },
+  {
+    "id": "recovery",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "服务尚未开放 · 恢复未完成"
+  },
+  {
+    "id": "recovery",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "记录 42 不重复产生额外效果",
+    "to": "2"
+  },
+  {
+    "id": "index",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "compare",
+    "state": "独立方案 A · 修改叶页",
+    "to": "1"
+  },
+  {
+    "id": "index",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "compare",
+    "state": "独立方案 B · MemTable 累积",
+    "to": "2"
+  },
+  {
+    "id": "index",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "此步骤仅属于 LSM 路径",
+    "to": "3"
+  },
+  {
+    "id": "index",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "compare",
+    "state": "读放大 / 写放大 / 空间放大",
+    "to": "3"
+  },
+  {
+    "id": "index",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "写入速率持续较高",
+    "to": "1"
+  },
+  {
+    "id": "index",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "待处理 SST 持续增加",
+    "to": "3"
+  },
+  {
+    "id": "index",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "待压实字节 / 文件数量过高",
+    "to": "2"
+  },
+  {
+    "id": "index",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "写入受限 · 后台继续消化积压",
+    "to": "0"
+  },
+  {
+    "id": "invariants",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "坏事永远不发生",
+    "to": "1"
+  },
+  {
+    "id": "invariants",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "好事最终会发生 · 假设明确",
+    "to": "1"
+  },
+  {
+    "id": "invariants",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "状态图 + 活性循环检查",
+    "to": "2"
+  },
+  {
+    "id": "invariants",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "反例可重现 · 规范与实现需对应",
+    "to": "3"
+  },
+  {
+    "id": "invariants",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "X 归 A · Y 空闲",
+    "to": "2"
+  },
+  {
+    "id": "invariants",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "request",
+    "state": "X 归 A · Y 归 B",
+    "to": "2"
+  },
+  {
+    "id": "invariants",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "A 等 B · B 等 A · 无任务进展"
+  },
+  {
+    "id": "invariants",
+    "scenario": "fault",
+    "stage": 4,
+    "issues": [],
+    "kind": "local",
+    "state": "进程存活 · 任务死锁"
+  },
+  {
+    "id": "retries",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "同一逻辑操作使用同一 K",
+    "to": "1"
+  },
+  {
+    "id": "retries",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "request",
+    "state": "服务端已提交 · 客户端尚未知",
+    "to": "2"
+  },
+  {
+    "id": "retries",
+    "scenario": "normal",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "UNKNOWN ≠ FAILED"
+  },
+  {
+    "id": "retries",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "相同 K · 有限尝试 · 结果待确认",
+    "to": "1"
+  },
+  {
+    "id": "retries",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "多个请求同时在途",
+    "to": "1"
+  },
+  {
+    "id": "retries",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "request",
+    "state": "部分效果可能已生效",
+    "to": "2"
+  },
+  {
+    "id": "retries",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "UNKNOWN · 不能当作未执行"
+  },
+  {
+    "id": "retries",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "重试放大 · 恢复更困难",
+    "to": "2"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "K 绑定调用者、操作与参数",
+    "to": "1"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "业务效果与 K→R 一起持久提交",
+    "to": "2"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "逻辑身份不随尝试或实例改变",
+    "to": "3"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "完成记录命中 · 业务效果仍只有一次",
+    "to": "3"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "request",
+    "state": "A 判断 K 未处理",
+    "to": "2"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "A、B 都准备执行",
+    "to": "2"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "业务效果计数 = 1",
+    "to": "2"
+  },
+  {
+    "id": "idempotency",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "业务效果计数 = 2",
+    "to": "2"
+  },
+  {
+    "id": "messaging",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "M: IN FLIGHT",
+    "to": "1"
+  },
+  {
+    "id": "messaging",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "业务效果与消费记录已持久提交",
+    "to": "2"
+  },
+  {
+    "id": "messaging",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "ACK 已发送 · 队列尚待处理",
+    "to": "0"
+  },
+  {
+    "id": "messaging",
+    "scenario": "normal",
+    "stage": 4,
+    "issues": [],
+    "kind": "local",
+    "state": "本次投递已确认"
+  },
+  {
+    "id": "messaging",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "M: IN FLIGHT",
+    "to": "1"
+  },
+  {
+    "id": "messaging",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "M 已处理 · 尚未 ACK",
+    "to": "2"
+  },
+  {
+    "id": "messaging",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "业务已提交 · 队列仍未确认"
+  },
+  {
+    "id": "messaging",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "重复投递 · 没有第二次业务效果",
+    "to": "3"
+  },
+  {
+    "id": "ordering",
+    "scenario": "normal",
+    "stage": 1,
+    "issues": [],
+    "kind": "local",
+    "state": "current = (goal=2, run=8)"
+  },
+  {
+    "id": "ordering",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "到达时间不代表新旧顺序",
+    "to": "3"
+  },
+  {
+    "id": "ordering",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "reject",
+    "state": "旧结果被拒绝",
+    "to": "0"
+  },
+  {
+    "id": "ordering",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "v2 得到有效执行的结果",
+    "to": "0"
+  },
+  {
+    "id": "ordering",
+    "scenario": "fault",
+    "stage": 1,
+    "issues": [],
+    "kind": "local",
+    "state": "current = (goal=2, run=8)"
+  },
+  {
+    "id": "ordering",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "旧结果仍可能到达",
+    "to": "3"
+  },
+  {
+    "id": "ordering",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "缺少版本与状态条件"
+  },
+  {
+    "id": "ordering",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "旧意图覆盖新意图",
+    "to": "0"
+  },
+  {
+    "id": "raft",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "持久副本 = Leader",
+    "to": "1"
+  },
+  {
+    "id": "raft",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "持久副本 = Leader + B",
+    "to": "2"
+  },
+  {
+    "id": "raft",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "Leader 已知 index 12 达到多数",
+    "to": "1"
+  },
+  {
+    "id": "raft",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "index 12 已提交并应用",
+    "to": "0"
+  },
+  {
+    "id": "raft",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "index 12 仅有 1/3 份",
+    "to": "1"
+  },
+  {
+    "id": "raft",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "lost",
+    "state": "仍只有 1/3 · 无多数",
+    "to": "2"
+  },
+  {
+    "id": "raft",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "commitIndex 不包含 index 12"
+  },
+  {
+    "id": "raft",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "本次写入没有成功确认",
+    "to": "0"
+  },
+  {
+    "id": "consistency",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "写入已完成",
+    "to": "0"
+  },
+  {
+    "id": "consistency",
+    "scenario": "normal",
+    "stage": 2,
+    "issues": [],
+    "kind": "local",
+    "state": "主 x=2 · 落后副本 x=1"
+  },
+  {
+    "id": "consistency",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "读必须包含已完成的写入",
+    "to": "1"
+  },
+  {
+    "id": "consistency",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "返回 x=2 · 满足本例的实时顺序",
+    "to": "3"
+  },
+  {
+    "id": "consistency",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "已完成的写入是 x=2",
+    "to": "0"
+  },
+  {
+    "id": "consistency",
+    "scenario": "fault",
+    "stage": 2,
+    "issues": [],
+    "kind": "local",
+    "state": "落后副本 x=1"
+  },
+  {
+    "id": "consistency",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "读的目标是落后副本",
+    "to": "2"
+  },
+  {
+    "id": "consistency",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "x=1 · 违反已声明的读语义",
+    "to": "3"
+  },
+  {
+    "id": "sharding",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "owner(key)=A · epoch=5",
+    "to": "0"
+  },
+  {
+    "id": "sharding",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "A 已冻结 · B 具有完整切换状态",
+    "to": "2"
+  },
+  {
+    "id": "sharding",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "owner(key)=B · A 不再接受旧写入",
+    "to": "2"
+  },
+  {
+    "id": "sharding",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "reject",
+    "state": "旧请求未写入 · 客户端将刷新路由",
+    "to": "1"
+  },
+  {
+    "id": "sharding",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "客户端缓存 A / epoch 5",
+    "to": "0"
+  },
+  {
+    "id": "sharding",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "A x=1 · B x=1",
+    "to": "2"
+  },
+  {
+    "id": "sharding",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "0",
+    "issues": [],
+    "kind": "control",
+    "state": "B 被启用 · A 也仍可写",
+    "to": "2"
+  },
+  {
+    "id": "sharding",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "request",
+    "state": "A x=2 · B x=1 · 状态分叉",
+    "to": "1"
+  },
+  {
+    "id": "fencing",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "当前租约持有者 W1",
+    "to": "0"
+  },
+  {
+    "id": "fencing",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "当前租约持有者 W2",
+    "to": "2"
+  },
+  {
+    "id": "fencing",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "目标资源 maxToken=8",
+    "to": "3"
+  },
+  {
+    "id": "fencing",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "reject",
+    "state": "旧请求被拒绝 · 新结果保留",
+    "to": "3"
+  },
+  {
+    "id": "fencing",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "有租约 · 资源侧无隔离",
+    "to": "0"
+  },
+  {
+    "id": "fencing",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "control",
+    "state": "当前租约持有者 W2",
+    "to": "2"
+  },
+  {
+    "id": "fencing",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "存储 = newValue",
+    "to": "3"
+  },
+  {
+    "id": "fencing",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "旧结果覆盖新结果",
+    "to": "3"
+  },
+  {
+    "id": "outbox",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "业务状态与事件 E 一起提交",
+    "to": "1"
+  },
+  {
+    "id": "outbox",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "事件 E 待发送",
+    "to": "2"
+  },
+  {
+    "id": "outbox",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "E 已被消息系统确认接收",
+    "to": "3"
+  },
+  {
+    "id": "outbox",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "已记录发送进度 · 下游另行消费",
+    "to": "1"
+  },
+  {
+    "id": "outbox",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "本地业务与发送意图都已持久化",
+    "to": "1"
+  },
+  {
+    "id": "outbox",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "E 已发布 · Outbox 仍待发送",
+    "to": "3"
+  },
+  {
+    "id": "outbox",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "发送进度未保存 · 结果存在歧义"
+  },
+  {
+    "id": "outbox",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "data",
+    "state": "消息可能重复 · 发送意图未丢失",
+    "to": "3"
+  },
+  {
+    "id": "security",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "已验证主体 user:A",
+    "to": "1"
+  },
+  {
+    "id": "security",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "check",
+    "state": "检查 principal + action + resource",
+    "to": "2"
+  },
+  {
+    "id": "security",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "已授权 · 资源预算允许",
+    "to": "3"
+  },
+  {
+    "id": "security",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "data",
+    "state": "操作成功 · 已记录审计",
+    "to": "0"
+  },
+  {
+    "id": "security",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "request",
+    "state": "身份有效 · 权限仍待判断",
+    "to": "1"
+  },
+  {
+    "id": "security",
+    "scenario": "fault",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "check",
+    "state": "待检查具体对象权限",
+    "to": "2"
+  },
+  {
+    "id": "security",
+    "scenario": "fault",
+    "stage": 3,
+    "issues": [],
+    "kind": "local",
+    "state": "未授权 · 目标资源未执行"
+  },
+  {
+    "id": "security",
+    "scenario": "fault",
+    "stage": 4,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "拒绝完成 · 无越权效果",
+    "to": "0"
+  },
+  {
+    "id": "observability",
+    "scenario": "normal",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "执行记录可以关联",
+    "to": "1"
+  },
+  {
+    "id": "observability",
+    "scenario": "normal",
+    "stage": 2,
+    "from": "1",
+    "issues": [],
+    "kind": "data",
+    "state": "系统指标与业务状态可对照",
+    "to": "2"
+  },
+  {
+    "id": "observability",
+    "scenario": "normal",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "阶段超过期限未推进",
+    "to": "3"
+  },
+  {
+    "id": "observability",
+    "scenario": "normal",
+    "stage": 4,
+    "from": "3",
+    "issues": [],
+    "kind": "control",
+    "state": "恢复受控 · 仍需验证业务进展",
+    "to": "0"
+  },
+  {
+    "id": "observability",
+    "scenario": "fault",
+    "stage": 1,
+    "from": "0",
+    "issues": [],
+    "kind": "data",
+    "state": "组件可报告存活",
+    "to": "1"
+  },
+  {
+    "id": "observability",
+    "scenario": "fault",
+    "stage": 2,
+    "issues": [],
+    "kind": "local",
+    "state": "任务仍未推进"
+  },
+  {
+    "id": "observability",
+    "scenario": "fault",
+    "stage": 3,
+    "from": "2",
+    "issues": [],
+    "kind": "control",
+    "state": "已识别心跳与进展不一致",
+    "to": "3"
+  },
+  {
+    "id": "observability",
+    "scenario": "fault",
+    "stage": 4,
+    "issues": [],
+    "kind": "local",
+    "state": "停滞已发现 · 尚不宣称恢复成功"
+  }
+]
