@@ -5,7 +5,9 @@ assert.equal(lessons.length,20);assert.equal(ids.size,20);
 const groupCounts=[0,1,2,3].map(g=>lessons.filter(l=>l.group===g).length);
 assert.equal(groupCounts.reduce((a,b)=>a+b,0),20);
 assert.equal(scope.groups.length,groupCounts.filter(c=>c>0).length);
-assert.deepEqual(groupCounts,[6,6,4,4]);
+assert.deepEqual(groupCounts,[5,5,4,6]);
+assert.equal(lessons[0].id,'arch-four-layers');
+assert.equal(lessons[lessons.length-1].id,'cdc-replication');
 const kinds=new Set(['request','data','control','check','reject','lost','local','compare']);
 let count=0;
 for(const l of lessons){

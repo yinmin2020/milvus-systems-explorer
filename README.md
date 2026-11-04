@@ -10,30 +10,30 @@ A Chinese interactive Milvus **3.0** systems teaching site (Phase 2, 20 topics).
 
 当前通过 **`gh-pages` 分支根目录**（从 `dist/` 发布）部署。Actions 工作流原稿在 `docs/pages.yml.example`；本机 OAuth token 缺 `workflow` 作用域时无法推送 `.github/workflows/*`。若要改用 Actions：给 `gh` 授权 `workflow` 后把示例复制为 `.github/workflows/pages.yml` 并推送，再在 **Settings → Pages → Source** 选 **GitHub Actions**。
 
-## 主题（20）
+## 主题（20 · 循序渐进）
 
 | 组 | ID | 标题 |
 | --- | --- | --- |
-| 01 数据面与检索性能 | `segment-lifecycle` | 段生命周期与密封 |
-| | `vector-index` | 向量索引检索路径 |
-| | `query-node` | 查询归并 · SN + QN |
-| | `load-release` | Load / Release |
-| | `hybrid-search-rrf` | 混合检索 · RRF |
-| | `filtered-search` | 过滤检索 · Bitset |
-| 02 写入与一致性 | `insert-path` | 写入路径 · WAL |
-| | `timetravel` | 时间戳与可见性 |
-| | `consistency-levels` | 四级一致性行为 |
+| 01 地图与写入 | `arch-four-layers` | 四层架构与请求分流 |
+| | `mixcoord-meta` | MixCoord 与元数据 |
+| | `insert-path` | 写入路径 · WAL |
 | | `streaming-woodpecker` | Streaming · Woodpecker WAL |
+| | `segment-lifecycle` | 段生命周期与密封 |
+| 02 装载与检索 | `load-release` | Load / Release |
+| | `query-node` | 查询归并 · SN + QN |
+| | `vector-index` | 向量索引检索路径 |
+| | `filtered-search` | 过滤检索 · Bitset |
+| | `hybrid-search-rrf` | 混合检索 · RRF |
+| 03 可见性与变更 | `timetravel` | 时间戳与可见性 |
+| | `consistency-levels` | 四级一致性行为 |
 | | `delete-upsert-bitset` | Delete/Upsert · Bitset |
 | | `partition-key` | Partition Key 路由 |
-| 03 控制面与高可用 | `mixcoord-meta` | MixCoord 与元数据 |
-| | `replica-failover` | 副本与故障切换 |
-| | `arch-four-layers` | 四层架构与请求分流 |
-| | `cdc-replication` | CDC 主备复制与 Failover |
-| 04 存储与生命周期 | `compaction-clustering` | Compaction / Clustering |
+| 04 存储与高可用 | `compaction-clustering` | Compaction / Clustering |
 | | `storage-v3` | Storage V3（3.0） |
 | | `tiered-storage` | Tiered Storage · 冷热 |
 | | `snapshots` | Snapshot 创建 / Pin / Restore |
+| | `replica-failover` | 副本与故障切换 |
+| | `cdc-replication` | CDC 主备复制与 Failover |
 
 每个主题含主流程 + 故障/边界共 2 个独立场景、各 4 步（合计 **40 场景 / 160 阶段**）。
 

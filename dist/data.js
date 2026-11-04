@@ -1,7 +1,3 @@
-// Audited teaching content for Milvus Systems Explorer (Phase 2 · 20 topics).
-// Frames: label, from, to, event, explanation, state, relation kind.
-// Teaching model for Milvus 3.0 GA architecture (MixCoord, Streaming Node, Woodpecker WAL).
-// Not a production specification or formal protocol proof.
 const SOURCES = {
   "arch_overview": {
     "name": "Milvus 3.0 · Architecture Overview",
@@ -204,1032 +200,37 @@ const SOURCES = {
 };
 const GROUPS = [
   {
-    "id": "dataplane",
-    "name": "数据面与检索性能",
-    "en": "DATA PLANE & SEARCH",
+    "id": "map_write",
+    "name": "地图与写入",
+    "en": "MAP & WRITE PATH",
     "color": "#00A1EA",
-    "question": "段如何生长密封、索引与过滤/混合检索如何加速，Load 后 SN/QN 如何归并？"
+    "question": "系统四层长什么样？写入如何进 WAL，段如何从 Growing 到 Sealed？"
   },
   {
-    "id": "write_consistency",
-    "name": "写入与一致性",
-    "en": "WRITE PATH & CONSISTENCY",
+    "id": "load_search",
+    "name": "装载与检索",
+    "en": "LOAD & SEARCH",
     "color": "#0077B6",
-    "question": "3.0 写入如何进 WAL/Woodpecker，删除 Upsert 与 Partition Key 如何改可见集？"
+    "question": "为何要 Load？QueryNode 如何归并？索引与过滤/混合检索怎么走？"
   },
   {
-    "id": "control_ha",
-    "name": "控制面与高可用",
-    "en": "CONTROL PLANE & HA",
+    "id": "visibility_change",
+    "name": "可见性与变更",
+    "en": "VISIBILITY & MUTATION",
     "color": "#0284C7",
-    "question": "四层如何分流，MixCoord/etcd 管什么，副本与 CDC 主备如何继续服务？"
+    "question": "时间戳与四级一致性如何决定可见性？Delete/Upsert 与 Partition Key 如何改数据视图？"
   },
   {
-    "id": "storage_lifecycle",
-    "name": "存储与生命周期",
-    "en": "STORAGE & LIFECYCLE",
-    "color": "#0EA5E9",
-    "question": "Compaction 如何重排段、Storage V3 / Tiered / Snapshot 如何管冷热与时间点？"
+    "id": "storage_ha",
+    "name": "存储与高可用",
+    "en": "STORAGE & HA",
+    "color": "#0369A1",
+    "question": "Compaction / Storage V3 / 冷热与 Snapshot 之后，副本与 CDC 如何兜底？"
   }
 ];
 const LESSONS = [
   {
     "group": 0,
-    "id": "segment-lifecycle",
-    "title": "段生命周期与密封",
-    "en": "SEGMENT LIFECYCLE · 3.0",
-    "summary": "Milvus 3.0：增量由 Streaming Node 维护为 Growing；密封后成为历史 Sealed，DataNode 建索引，QueryNode 加载；MixCoord 调度 handoff。教学模型，非生产协议证明。",
-    "nodes": [
-      "StreamingNode",
-      "Growing 段",
-      "DataNode",
-      "QueryNode"
-    ],
-    "steps": [
-      [
-        "写入进 Growing",
-        0,
-        1,
-        "APPEND GROWING",
-        "Streaming Node 在分片上追加 WAL 后，把增量保留为可搜的 Growing 段（相对 2.x：不再由 Proxy 直写外部 MQ 再由 DataNode 独自沉淀写入路径）。",
-        "Growing 可搜",
-        "data"
-      ],
-      [
-        "达到密封策略",
-        1,
-        0,
-        "SEAL POLICY",
-        "按段大小/空闲/内存等策略，Streaming Node 将 Growing 转为不可变 Sealed（历史段），并持久相关数据视图。",
-        "Growing → Sealed",
-        "control"
-      ],
-      [
-        "DataNode 建索引",
-        0,
-        2,
-        "BUILD INDEX",
-        "MixCoord 把索引/compaction 等离线任务交给 DataNode（3.0 已合并原 IndexNode）。",
-        "索引产物入对象存储",
-        "request"
-      ],
-      [
-        "QueryNode handoff",
-        2,
-        3,
-        "LOAD / HANDOFF",
-        "QueryNode 从对象存储加载 Sealed+索引；协调器完成从 Growing 到历史检索视图的 handoff。",
-        "历史检索切到 Indexed",
-        "data"
-      ]
-    ],
-    "principle": "Streaming 管增量与密封；DataNode 管离线加工；QueryNode 管历史检索。",
-    "tradeoff": "更早密封利于索引化与稳定延迟，但增加小段与 compaction；过晚则 Growing 内存与实时扫描成本升高。",
-    "pitfall": "不要把 2.x「DataNode 订阅 MQ 写段」当成 3.0 唯一真相：3.0 写入与 Growing 生命周期以 Streaming Node + WAL 为中心。",
-    "code": [
-      "sn = streamingNode.for(pchannel)",
-      "sn.append(wal, rows)           # growing searchable",
-      "sealed = sn.sealWhen(policy)   # immutable historical",
-      "dataNode.buildIndex(sealed)",
-      "mixCoord.handoff(to=queryNode)"
-    ],
-    "sources": [
-      "arch_overview",
-      "streaming_service",
-      "upgrade_30"
-    ],
-    "related": [
-      "insert-path",
-      "vector-index",
-      "query-node",
-      "compaction-clustering",
-      "load-release",
-      "storage-v3"
-    ],
-    "fault": {
-      "name": "密封滞后 · Growing 膨胀",
-      "nodes": [
-        "写入压力",
-        "StreamingNode",
-        "对象存储",
-        "查询路径"
-      ],
-      "steps": [
-        [
-          "持续高压写入",
-          0,
-          1,
-          "BURST APPEND",
-          "短时大量追加使 Growing 远超习惯工作集；Streaming Node 仍要提供 Growing 查询。",
-          "Growing 行数激增",
-          "data"
-        ],
-        [
-          "密封任务受阻",
-          1,
-          1,
-          "SEAL DELAY",
-          "资源或策略导致密封推迟；历史段与索引尚未就绪。",
-          "仍停在 Growing",
-          "local"
-        ],
-        [
-          "持久化变慢",
-          1,
-          2,
-          "SLOW PERSIST",
-          "对象存储抖动拖慢密封/持久；教学用一次慢写入代表存储延迟。",
-          "历史视图未就绪",
-          "lost"
-        ],
-        [
-          "查询代价偏高",
-          1,
-          3,
-          "HEAVY GROWING",
-          "handoff 前更多工作落在 Growing 路径；应观察密封滞后而非只看 insert QPS。",
-          "可搜但成本高",
-          "check"
-        ]
-      ],
-      "code": [
-        "if growing.bytes > budget and seal.lagging():",
-        "  alert('seal_pending / growing_bytes')",
-        "  # do not assume indexed sealed already serving"
-      ]
-    }
-  },
-  {
-    "group": 0,
-    "id": "vector-index",
-    "title": "向量索引检索路径",
-    "en": "IVF_FLAT / HNSW",
-    "summary": "索引仍由 DataNode 等离线构建并落对象存储；查询时 Sealed 走索引，Growing 走实时路径。本课用 IVF_FLAT 与 HNSW 对照教学。",
-    "nodes": [
-      "查询向量",
-      "IVF 粗排",
-      "HNSW 图",
-      "候选精排"
-    ],
-    "steps": [
-      [
-        "选择索引方案",
-        0,
-        1,
-        "PICK INDEX",
-        "为向量字段选择 IVF_FLAT 或 HNSW 等；3.0 中索引构建任务由统一调度下发到 DataNode。",
-        "索引类型已选定",
-        "compare"
-      ],
-      [
-        "IVF：近邻桶",
-        0,
-        1,
-        "nprobe BUCKETS",
-        "先选 nprobe 个近邻簇，只扫描桶内向量，降低全库扫描。",
-        "候选 ⊂ 全库",
-        "request"
-      ],
-      [
-        "HNSW：图跳跃",
-        0,
-        2,
-        "GRAPH WALK",
-        "从高层入口贪心下行，用 ef 控制探索宽度，得到候选集。",
-        "候选沿边扩展",
-        "request"
-      ],
-      [
-        "精排 TopK",
-        3,
-        0,
-        "TOPK DIST",
-        "对候选算度量并取 TopK。参数与召回/延迟权衡见官方索引页。",
-        "返回近似近邻",
-        "data"
-      ]
-    ],
-    "principle": "索引用可接受近似换掉数量级扫描；Growing 与 Sealed 路径不同，归并在查询计划里完成。",
-    "tradeoff": "IVF 参数直观；HNSW 常更高召回但构图与内存更贵。二者都不是默认的精确全局扫描。",
-    "pitfall": "把 nprobe/ef 调极大 ≠ 精确检索；精确需求用 FLAT/明确精确模式，并承担代价。",
-    "code": [
-      "if index == IVF_FLAT:",
-      "  buckets = pickNearestCentroids(q, nprobe)",
-      "  cands = scan(buckets)",
-      "elif index == HNSW:",
-      "  cands = greedySearch(graph, q, ef)",
-      "return topK(exactDistance(q, cands))"
-    ],
-    "sources": [
-      "index_overview",
-      "ivf_flat",
-      "hnsw"
-    ],
-    "related": [
-      "segment-lifecycle",
-      "query-node",
-      "insert-path",
-      "filtered-search",
-      "hybrid-search-rrf"
-    ],
-    "fault": {
-      "name": "参数过小 · 召回塌陷",
-      "nodes": [
-        "查询向量",
-        "过小 nprobe",
-        "过小 ef",
-        "评测集"
-      ],
-      "steps": [
-        [
-          "上线偏小参数",
-          0,
-          1,
-          "nprobe=1",
-          "为追延迟压低 nprobe/ef，探索覆盖不足。",
-          "候选过窄",
-          "request"
-        ],
-        [
-          "真近邻未进入",
-          1,
-          3,
-          "MISS TRUE NN",
-          "真近邻所在桶/子图未被触及，结果缺关键项。",
-          "召回下降",
-          "reject"
-        ],
-        [
-          "提高探索对照",
-          0,
-          2,
-          "RAISE ef/nprobe",
-          "在评测集上提高参数，观察召回-延迟曲线。",
-          "召回↑ 延迟↑",
-          "compare"
-        ],
-        [
-          "固化评测门槛",
-          3,
-          3,
-          "RECALL GATE",
-          "发布前用召回门槛约束参数；索引是产品决策。",
-          "先测再调",
-          "local"
-        ]
-      ],
-      "code": [
-        "recall = evaluate(topk, groundTruth)",
-        "if recall < gate: raise nprobe_or_ef"
-      ]
-    }
-  },
-  {
-    "group": 0,
-    "id": "query-node",
-    "title": "查询归并 · SN + QN",
-    "en": "SEARCH PATH · 3.0",
-    "summary": "3.0 查询：Proxy 将请求交给持有分片的 Streaming Node；SN 查 Growing 并作为 Query Delegator 联系 QueryNode 查 Sealed，再多层归并。",
-    "nodes": [
-      "Proxy",
-      "StreamingNode",
-      "QueryNode",
-      "对象存储"
-    ],
-    "steps": [
-      [
-        "Proxy 路由到 SN",
-        0,
-        1,
-        "ROUTE SHARD",
-        "Proxy 按分片把 search 交给对应 Streaming Node（相对 2.x：查询委托不再主要落在 QueryNode 侧）。",
-        "SN 收到查询",
-        "request"
-      ],
-      [
-        "SN 查 Growing",
-        1,
-        1,
-        "SEARCH GROWING",
-        "Streaming Node 本地检索 Growing，并生成/协调查询计划。",
-        "增量候选就绪",
-        "local"
-      ],
-      [
-        "QN 查 Sealed",
-        1,
-        2,
-        "SEARCH SEALED",
-        "SN 联系已 Load 的 QueryNode；QN 必要时从对象存储加载历史段/索引并检索。",
-        "历史候选就绪",
-        "request"
-      ],
-      [
-        "多层归并返回",
-        2,
-        0,
-        "REDUCE TOPK",
-        "QueryNode 段级归并 → Streaming Node 分片归并 → Proxy 全局归并后返回客户端。",
-        "全局 TopK",
-        "data"
-      ]
-    ],
-    "principle": "流批分离：SN 管增量与委托，QN 管历史，Proxy 做最终归并。",
-    "tradeoff": "委托上收到 SN 改善写侧共识与扩展，但运维需同时关注 SN 与 QN 健康；未 Load 则历史段不可用。",
-    "pitfall": "仍按 2.x 思维假设「Proxy 只打 QueryNode」会误判故障面；3.0 要同时看 Streaming Node。",
-    "code": [
-      "sn = proxy.shardStreamingNode(collection, shard)",
-      "growing = sn.searchGrowing(q, k)",
-      "sealed = sn.delegator.queryNodes.searchSealed(q, k)",
-      "return proxy.reduce(sn.reduce(growing, sealed))"
-    ],
-    "sources": [
-      "arch_overview",
-      "streaming_service",
-      "replica"
-    ],
-    "related": [
-      "segment-lifecycle",
-      "vector-index",
-      "replica-failover",
-      "load-release",
-      "hybrid-search-rrf",
-      "arch-four-layers"
-    ],
-    "fault": {
-      "name": "集合未 Load",
-      "nodes": [
-        "客户端",
-        "Proxy",
-        "MixCoord",
-        "空 QueryNode"
-      ],
-      "steps": [
-        [
-          "直接 Search",
-          0,
-          1,
-          "SEARCH",
-          "集合尚未 Load，无可用历史查询视图。",
-          "缺 serving view",
-          "request"
-        ],
-        [
-          "协调器无视图",
-          1,
-          2,
-          "LOOKUP VIEW",
-          "MixCoord/查询视图中没有可服务的段分布。",
-          "路由失败",
-          "check"
-        ],
-        [
-          "请求被拒绝",
-          2,
-          1,
-          "REJECT",
-          "教学模型：明确失败优于静默空结果被当成「没数据」。",
-          "查询未执行",
-          "reject"
-        ],
-        [
-          "Load 后再搜",
-          2,
-          3,
-          "LOAD",
-          "执行 Load，QueryNode 拉取 Sealed；再经 SN 路径搜索。",
-          "可服务",
-          "control"
-        ]
-      ],
-      "code": [
-        "if not collection.isLoaded: raise CollectionNotLoaded",
-        "collection.load()",
-        "return search(...)"
-      ]
-    }
-  },
-  {
-    "group": 1,
-    "id": "insert-path",
-    "title": "写入路径 · WAL",
-    "en": "INSERT · STREAMING + WAL",
-    "summary": "Milvus 3.0：Client → Proxy → Streaming Node → WAL（默认教学用 Woodpecker 零盘；也可 Pulsar/Kafka）。相对 2.x Proxy 直写外部 MQ、DataNode 订阅沉淀的拓扑已改变。",
-    "nodes": [
-      "Proxy",
-      "StreamingNode",
-      "WAL · Woodpecker",
-      "Growing 缓冲"
-    ],
-    "steps": [
-      [
-        "Proxy 校验路由",
-        0,
-        0,
-        "VALIDATE",
-        "Proxy 校验 schema/权限等，解析目标分片对应的 Streaming Node。",
-        "请求合法",
-        "local"
-      ],
-      [
-        "SN 追加 WAL",
-        0,
-        1,
-        "APPEND WAL",
-        "Streaming Node 将插入写入 WAL 存储；Woodpecker 可直写对象存储（零盘），也可使用 Pulsar/Kafka。",
-        "耐久日志已提交",
-        "data"
-      ],
-      [
-        "写入确认",
-        1,
-        2,
-        "WAL COMMIT",
-        "WAL 提交后具备故障恢复基础；Write-Ahead Buffer 可支持尾读，避免每次回源。",
-        "ACK 条件满足",
-        "data"
-      ],
-      [
-        "进入 Growing",
-        1,
-        3,
-        "GROWING VIEW",
-        "提交后的增量进入 Growing 查询视图，供 SN 实时检索；密封与索引异步推进。",
-        "增量可搜",
-        "data"
-      ]
-    ],
-    "principle": "WAL 是突变的权威前置日志；Streaming Node 拥有分片级写与 Growing 读。",
-    "tradeoff": "Woodpecker 降低 MQ 运维，但要把对象存储与 WAL 配置纳入容量规划；外部 MQ 仍可用但运维模型不同。",
-    "pitfall": "把「insert ACK」理解成「已在所有 QueryNode 索引可搜」；ACK 首先关于 WAL/流式路径，索引与 handoff 仍异步。",
-    "code": [
-      "sn = proxy.locateStreamingNode(shard)",
-      "sn.append(walBackend, InsertMsg(rows, ts))  # Woodpecker/Pulsar/Kafka",
-      "growing.buffer(rows)",
-      "ackClient()"
-    ],
-    "sources": [
-      "arch_overview",
-      "streaming_service",
-      "upgrade_30"
-    ],
-    "related": [
-      "segment-lifecycle",
-      "timetravel",
-      "mixcoord-meta",
-      "streaming-woodpecker",
-      "delete-upsert-bitset",
-      "partition-key"
-    ],
-    "fault": {
-      "name": "WAL 追加受阻",
-      "nodes": [
-        "Proxy",
-        "StreamingNode",
-        "WAL 后端",
-        "监控"
-      ],
-      "steps": [
-        [
-          "客户端持续写入",
-          0,
-          1,
-          "INSERT",
-          "业务压力仍打到 Proxy/SN。",
-          "请求涌入",
-          "request"
-        ],
-        [
-          "WAL 写入超时",
-          1,
-          2,
-          "APPEND TIMEOUT",
-          "Woodpecker/对象存储或外部 MQ 抖动，追加失败或极慢。",
-          "耐久未确认",
-          "lost"
-        ],
-        [
-          "对客户端失败",
-          1,
-          0,
-          "NACK",
-          "未获 WAL 提交则不能假装成功；客户端应重试并注意幂等。",
-          "写入未 ACK",
-          "reject"
-        ],
-        [
-          "告警与排障",
-          1,
-          3,
-          "ALERT",
-          "盯 WAL 错误率、SN 健康与对象存储延迟，而不是只看 Proxy QPS。",
-          "以 WAL 为信号",
-          "control"
-        ]
-      ],
-      "code": [
-        "try: sn.append(wal, msg)",
-        "except Timeout:",
-        "  alert('wal_append_fail'); raise"
-      ]
-    }
-  },
-  {
-    "group": 1,
-    "id": "timetravel",
-    "title": "时间戳与可见性",
-    "en": "TSO / TIMETICK · 3.0",
-    "summary": "MixCoord 提供集群 TSO；Streaming Node / WAL 推进 TimeTick 与可读水位；查询用 guarantee 时间判断可见集。教学简化。",
-    "nodes": [
-      "MixCoord · TSO",
-      "StreamingNode",
-      "TimeTick",
-      "查询快照"
-    ],
-    "steps": [
-      [
-        "分配时间戳",
-        0,
-        1,
-        "ALLOC TS",
-        "插入等从 MixCoord 的 TSO 取得单调时间戳（3.0 协调器合并后仍承担 TSO 职责）。",
-        "msg.ts = T",
-        "request"
-      ],
-      [
-        "按 TS 入 WAL",
-        1,
-        1,
-        "ORDERED LOG",
-        "Streaming Node 按 TSO 顺序维护 WAL 可读序列；同通道内总序由此约束。",
-        "有序日志",
-        "local"
-      ],
-      [
-        "推进 TimeTick",
-        1,
-        2,
-        "TIMETICK",
-        "TimeTick 声明此前时间戳消息已齐，推动分片可读水位。",
-        "watermark ↑",
-        "control"
-      ],
-      [
-        "查询读快照",
-        2,
-        3,
-        "READ AT Ts",
-        "查询携带 guaranteeTs / 一致性策略，只看见水位允许的插入集合。",
-        "可见 ≤ readTs",
-        "check"
-      ]
-    ],
-    "principle": "可见性由时间戳与水位共同决定，不是单独由 insert 返回决定。",
-    "tradeoff": "更强即时可见要等更高水位；放宽级别可降延迟但读到更旧视图。",
-    "pitfall": "Timetravel/travel 语义以当前版本文档为准，并受保留与压缩策略限制。",
-    "code": [
-      "ts = mixCoord.allocTimestamp()",
-      "sn.append(wal, Insert(ts))",
-      "sn.onTimeTick(tickTs)",
-      "visible = rows where row.ts <= readTs and tickOk(readTs)"
-    ],
-    "sources": [
-      "timestamps",
-      "streaming_service",
-      "consistency"
-    ],
-    "related": [
-      "insert-path",
-      "consistency-levels",
-      "mixcoord-meta",
-      "delete-upsert-bitset",
-      "filtered-search"
-    ],
-    "fault": {
-      "name": "TimeTick 停滞",
-      "nodes": [
-        "StreamingNode",
-        "卡住的 Tick",
-        "Strong 查询",
-        "陈旧视图"
-      ],
-      "steps": [
-        [
-          "WAL 仍可追加",
-          0,
-          0,
-          "APPEND OK",
-          "业务写入偶发仍成功，日志继续。",
-          "日志在前进",
-          "local"
-        ],
-        [
-          "Tick 未推进",
-          0,
-          1,
-          "TICK STALL",
-          "TimeTick 同步异常，可读水位冻结。",
-          "watermark 停",
-          "lost"
-        ],
-        [
-          "强读等待",
-          2,
-          1,
-          "WAIT WATERMARK",
-          "Strong 等待水位追上 guaranteeTs，延迟升高或超时。",
-          "读被挡住",
-          "check"
-        ],
-        [
-          "弱读见旧视图",
-          2,
-          3,
-          "STALE READ",
-          "Eventually/旧会话可能长时间看不到新行；先查 Tick/SN 健康。",
-          "可见性滞后",
-          "reject"
-        ]
-      ],
-      "code": [
-        "if now - lastTimeTick > budget:",
-        "  alert('timetick_stall')"
-      ]
-    }
-  },
-  {
-    "group": 1,
-    "id": "consistency-levels",
-    "title": "四级一致性行为",
-    "en": "CONSISTENCY LEVELS",
-    "summary": "Strong / Bounded / Session / Eventually 描述查询相对写入的新鲜度承诺；3.0 仍通过流式水位与会话语义兑现，本课讲行为差异。",
-    "nodes": [
-      "写入完成",
-      "Strong 读",
-      "Session 读",
-      "Eventually 读"
-    ],
-    "steps": [
-      [
-        "写入已 ACK",
-        0,
-        0,
-        "INSERT ACK",
-        "WAL 路径确认后客户端收到成功；后续读的可见性仍取决于级别。",
-        "写入已确认",
-        "local"
-      ],
-      [
-        "Strong：等到齐",
-        0,
-        1,
-        "READ STRONG",
-        "等待相关水位满足后再读，通常延迟最高、新鲜度最强。",
-        "必见已确认写",
-        "check"
-      ],
-      [
-        "Session：读己之写",
-        0,
-        2,
-        "READ SESSION",
-        "同一会话能读到自己写过的内容；跨会话不承诺立刻看见他人写入。",
-        "会话内一致",
-        "check"
-      ],
-      [
-        "Eventually：尽快",
-        0,
-        3,
-        "READ EVENTUAL",
-        "用较旧快照尽快返回；Bounded 限制陈旧上限。都是延迟-新鲜度旋钮。",
-        "可能短暂陈旧",
-        "compare"
-      ]
-    ],
-    "principle": "一致性级别是 API 上的新鲜度旋钮，不是四套无关存储引擎。",
-    "tradeoff": "更强一致 → 更高尾延迟；更弱 → 更快但要容忍短暂旧读。",
-    "pitfall": "在 Eventually 下做写后即读校验失败时，误判丢数；先核对级别与会话。",
-    "code": [
-      "insert(rows)",
-      "search(level=Strong)",
-      "search(level=Session)",
-      "search(level=Eventually)",
-      "search(level=Bounded, window=τ)"
-    ],
-    "sources": [
-      "consistency",
-      "timestamps",
-      "streaming_service"
-    ],
-    "related": [
-      "timetravel",
-      "insert-path",
-      "query-node",
-      "delete-upsert-bitset"
-    ],
-    "fault": {
-      "name": "级别误用 · 误判丢数",
-      "nodes": [
-        "写入客户端",
-        "Eventually 查询",
-        "校验脚本",
-        "Strong 复检"
-      ],
-      "steps": [
-        [
-          "写后立刻弱读",
-          0,
-          1,
-          "WRITE→EVENTUAL",
-          "Eventually 下立刻 search，未看见新行。",
-          "结果缺新行",
-          "request"
-        ],
-        [
-          "误报丢失",
-          1,
-          2,
-          "FALSE ALARM",
-          "把「不可见」当成「丢失」。",
-          "告警噪声",
-          "reject"
-        ],
-        [
-          "Strong/Session 复检",
-          0,
-          3,
-          "RECHECK",
-          "提高级别后新行出现。",
-          "数据仍在",
-          "check"
-        ],
-        [
-          "校正测试",
-          2,
-          2,
-          "FIX TEST",
-          "测试显式设置与业务匹配的级别。",
-          "语义对齐",
-          "local"
-        ]
-      ],
-      "code": [
-        "insert(row)",
-        "assert row in search(level=Session)  # or Strong"
-      ]
-    }
-  },
-  {
-    "group": 2,
-    "id": "mixcoord-meta",
-    "title": "MixCoord 与元数据",
-    "en": "MIXCOORD + ETCD · 3.0",
-    "summary": "3.0 用单一活跃 MixCoord 合并原 Root/Query/Data Coord：DDL/DCL/TSO、Streaming 绑定、查询拓扑、历史任务调度；元数据仍在 etcd。",
-    "nodes": [
-      "客户端 DDL",
-      "MixCoord",
-      "etcd",
-      "Streaming 绑定"
-    ],
-    "steps": [
-      [
-        "提交 DDL",
-        0,
-        1,
-        "CREATE COLL",
-        "创建集合等 DDL 进入 MixCoord（不再拆成多个独立 Coord 进程通信）。",
-        "DDL 已受理",
-        "request"
-      ],
-      [
-        "写入 etcd",
-        1,
-        2,
-        "PUT META",
-        "权威元数据提交到 etcd；集群获得集合定义真相。",
-        "etcd 已提交",
-        "data"
-      ],
-      [
-        "绑定 WAL / SN",
-        1,
-        3,
-        "BIND WAL",
-        "MixCoord 内 Streaming 协调逻辑把 WAL/PChannel 绑定到 Streaming Node，并暴露拓扑发现。",
-        "SN↔WAL 已绑定",
-        "control"
-      ],
-      [
-        "DDL 对集群可见",
-        2,
-        0,
-        "VISIBLE",
-        "Proxy/节点取得元数据版本后，集合可被写入与 Load。",
-        "元数据一致视图",
-        "data"
-      ]
-    ],
-    "principle": "一个活跃协调器 + etcd 元数据；工作节点按绑定与视图执行。",
-    "tradeoff": "MixCoord 简化分布式编程与运维，但协调器仍是脑：需关注其 HA/主备与 etcd 依赖。",
-    "pitfall": "文档或旧图仍写 RootCoord/QueryCoord/DataCoord 时，在 3.0 应映射为 MixCoord 内逻辑职责，而非三套现行必装进程。",
-    "code": [
-      "meta = mixCoord.createCollection(schema)",
-      "etcd.txnPut(collectionKey, meta)",
-      "mixCoord.bindWAL(pchannel, streamingNode)",
-      "notifyServingViews(meta.version)"
-    ],
-    "sources": [
-      "arch_overview",
-      "upgrade_30",
-      "streaming_service"
-    ],
-    "related": [
-      "insert-path",
-      "timetravel",
-      "replica-failover",
-      "arch-four-layers",
-      "cdc-replication"
-    ],
-    "fault": {
-      "name": "etcd 抖动 · DDL 失败",
-      "nodes": [
-        "客户端",
-        "MixCoord",
-        "etcd 抖动",
-        "已有元数据"
-      ],
-      "steps": [
-        [
-          "DDL 发送",
-          0,
-          1,
-          "ALTER",
-          "客户端发起变更。",
-          "请求在途",
-          "request"
-        ],
-        [
-          "etcd 超时",
-          1,
-          2,
-          "TXN TIMEOUT",
-          "etcd 选举/网络抖动致事务超时。",
-          "提交未确认",
-          "lost"
-        ],
-        [
-          "返回错误",
-          1,
-          0,
-          "DDL ERROR",
-          "客户端需重试，并确认是否已部分成功。",
-          "DDL 未完成",
-          "reject"
-        ],
-        [
-          "读权威元数据",
-          0,
-          3,
-          "DESCRIBE",
-          "用官方 API 读 etcd 视图，避免重复创建或手工改元数据。",
-          "以 etcd 为准",
-          "check"
-        ]
-      ],
-      "code": [
-        "try: mixCoord.ddl(req)",
-        "except Timeout:",
-        "  actual = describeCollection(); retryOnlyIfNeeded(actual)"
-      ]
-    }
-  },
-  {
-    "group": 2,
-    "id": "replica-failover",
-    "title": "副本与故障切换",
-    "en": "REPLICA / FAILOVER · 3.0",
-    "summary": "历史段可在多 QueryNode 上多副本；Streaming Node 通过 WAL fencing 在节点间迁移以保分流式 HA。本课主场景讲查询副本，故障场景讲 QN 宕机切换。",
-    "nodes": [
-      "Proxy",
-      "StreamingNode",
-      "QueryNode-1",
-      "QueryNode-2"
-    ],
-    "steps": [
-      [
-        "配置多副本",
-        0,
-        1,
-        "SET REPLICAS",
-        "Load 指定 replica；MixCoord 把 Sealed 分布到多个 QueryNode。",
-        "副本因子 = N",
-        "control"
-      ],
-      [
-        "SN 委托查询",
-        1,
-        2,
-        "DELEGATE",
-        "Streaming Node 作为分片委托，将 Sealed 检索打到健康 QueryNode。",
-        "QN-1 服务中",
-        "request"
-      ],
-      [
-        "副本待命",
-        1,
-        3,
-        "STANDBY",
-        "QN-2 持有同段另一副本，可分担或接管。",
-        "QN-2 已加载",
-        "data"
-      ],
-      [
-        "归并返回",
-        2,
-        0,
-        "MERGE",
-        "结果经 SN/Proxy 归并返回；用户无感拓扑。",
-        "查询成功",
-        "data"
-      ]
-    ],
-    "principle": "QN 副本换历史查询可用；SN/WAL 迁移换流式面可用——两层不要混为一谈。",
-    "tradeoff": "副本耗内存与加载时间；replica=1 时单 QN 故障即丢该历史视图能力。",
-    "pitfall": "副本不能替代对象存储与 etcd 耐久；也不是自动跨机房灾备说明书。",
-    "code": [
-      "collection.load(replica_number=2)",
-      "targets = mixCoord.pickHealthyQueryReplicas(shard)",
-      "return streamingNode.delegatedSearch(targets)"
-    ],
-    "sources": [
-      "replica",
-      "arch_overview",
-      "streaming_service"
-    ],
-    "related": [
-      "query-node",
-      "mixcoord-meta",
-      "segment-lifecycle",
-      "cdc-replication",
-      "load-release"
-    ],
-    "fault": {
-      "name": "QueryNode 宕机切换",
-      "nodes": [
-        "StreamingNode",
-        "故障 QN-1",
-        "存活 QN-2",
-        "MixCoord"
-      ],
-      "steps": [
-        [
-          "QN 心跳丢失",
-          1,
-          1,
-          "QN DOWN",
-          "QN-1 崩溃或网络隔离。",
-          "QN-1 不可用",
-          "local"
-        ],
-        [
-          "委托请求失败",
-          0,
-          1,
-          "RPC FAIL",
-          "SN 打向 QN-1 的检索失败/超时。",
-          "主路径中断",
-          "lost"
-        ],
-        [
-          "改写存活副本",
-          3,
-          2,
-          "REROUTE",
-          "MixCoord 更新查询视图，委托改打 QN-2。",
-          "QN-2 接管",
-          "control"
-        ],
-        [
-          "查询继续",
-          2,
-          0,
-          "SEARCH OK",
-          "仍有健康副本则可继续；副本耗尽需恢复或重新 Load。",
-          "降级可用",
-          "data"
-        ]
-      ],
-      "code": [
-        "if not healthy(qn1):",
-        "  targets = remainingReplicas(shard)",
-        "  if not targets: raise NoAvailableReplica",
-        "  return search(targets)"
-      ]
-    }
-  },
-  {
-    "group": 2,
     "id": "arch-four-layers",
     "title": "四层架构与请求分流",
     "en": "FOUR LAYERS · REQUEST PATH",
@@ -1296,8 +297,8 @@ const LESSONS = [
     "related": [
       "mixcoord-meta",
       "insert-path",
-      "query-node",
-      "streaming-woodpecker"
+      "streaming-woodpecker",
+      "query-node"
     ],
     "fault": {
       "name": "缓存拓扑过期",
@@ -1353,7 +354,256 @@ const LESSONS = [
     }
   },
   {
-    "group": 1,
+    "group": 0,
+    "id": "mixcoord-meta",
+    "title": "MixCoord 与元数据",
+    "en": "MIXCOORD + ETCD · 3.0",
+    "summary": "3.0 用单一活跃 MixCoord 合并原 Root/Query/Data Coord：DDL/DCL/TSO、Streaming 绑定、查询拓扑、历史任务调度；元数据仍在 etcd。",
+    "nodes": [
+      "客户端 DDL",
+      "MixCoord",
+      "etcd",
+      "Streaming 绑定"
+    ],
+    "steps": [
+      [
+        "提交 DDL",
+        0,
+        1,
+        "CREATE COLL",
+        "创建集合等 DDL 进入 MixCoord（不再拆成多个独立 Coord 进程通信）。",
+        "DDL 已受理",
+        "request"
+      ],
+      [
+        "写入 etcd",
+        1,
+        2,
+        "PUT META",
+        "权威元数据提交到 etcd；集群获得集合定义真相。",
+        "etcd 已提交",
+        "data"
+      ],
+      [
+        "绑定 WAL / SN",
+        1,
+        3,
+        "BIND WAL",
+        "MixCoord 内 Streaming 协调逻辑把 WAL/PChannel 绑定到 Streaming Node，并暴露拓扑发现。",
+        "SN↔WAL 已绑定",
+        "control"
+      ],
+      [
+        "DDL 对集群可见",
+        2,
+        0,
+        "VISIBLE",
+        "Proxy/节点取得元数据版本后，集合可被写入与 Load。",
+        "元数据一致视图",
+        "data"
+      ]
+    ],
+    "principle": "一个活跃协调器 + etcd 元数据；工作节点按绑定与视图执行。",
+    "tradeoff": "MixCoord 简化分布式编程与运维，但协调器仍是脑：需关注其 HA/主备与 etcd 依赖。",
+    "pitfall": "文档或旧图仍写 RootCoord/QueryCoord/DataCoord 时，在 3.0 应映射为 MixCoord 内逻辑职责，而非三套现行必装进程。",
+    "code": [
+      "meta = mixCoord.createCollection(schema)",
+      "etcd.txnPut(collectionKey, meta)",
+      "mixCoord.bindWAL(pchannel, streamingNode)",
+      "notifyServingViews(meta.version)"
+    ],
+    "sources": [
+      "arch_overview",
+      "upgrade_30",
+      "streaming_service"
+    ],
+    "related": [
+      "insert-path",
+      "arch-four-layers",
+      "replica-failover",
+      "cdc-replication",
+      "timetravel"
+    ],
+    "fault": {
+      "name": "etcd 抖动 · DDL 失败",
+      "nodes": [
+        "客户端",
+        "MixCoord",
+        "etcd 抖动",
+        "已有元数据"
+      ],
+      "steps": [
+        [
+          "DDL 发送",
+          0,
+          1,
+          "ALTER",
+          "客户端发起变更。",
+          "请求在途",
+          "request"
+        ],
+        [
+          "etcd 超时",
+          1,
+          2,
+          "TXN TIMEOUT",
+          "etcd 选举/网络抖动致事务超时。",
+          "提交未确认",
+          "lost"
+        ],
+        [
+          "返回错误",
+          1,
+          0,
+          "DDL ERROR",
+          "客户端需重试，并确认是否已部分成功。",
+          "DDL 未完成",
+          "reject"
+        ],
+        [
+          "读权威元数据",
+          0,
+          3,
+          "DESCRIBE",
+          "用官方 API 读 etcd 视图，避免重复创建或手工改元数据。",
+          "以 etcd 为准",
+          "check"
+        ]
+      ],
+      "code": [
+        "try: mixCoord.ddl(req)",
+        "except Timeout:",
+        "  actual = describeCollection(); retryOnlyIfNeeded(actual)"
+      ]
+    }
+  },
+  {
+    "group": 0,
+    "id": "insert-path",
+    "title": "写入路径 · WAL",
+    "en": "INSERT · STREAMING + WAL",
+    "summary": "Milvus 3.0：Client → Proxy → Streaming Node → WAL（默认教学用 Woodpecker 零盘；也可 Pulsar/Kafka）。相对 2.x Proxy 直写外部 MQ、DataNode 订阅沉淀的拓扑已改变。",
+    "nodes": [
+      "Proxy",
+      "StreamingNode",
+      "WAL · Woodpecker",
+      "Growing 缓冲"
+    ],
+    "steps": [
+      [
+        "Proxy 校验路由",
+        0,
+        0,
+        "VALIDATE",
+        "Proxy 校验 schema/权限等，解析目标分片对应的 Streaming Node。",
+        "请求合法",
+        "local"
+      ],
+      [
+        "SN 追加 WAL",
+        0,
+        1,
+        "APPEND WAL",
+        "Streaming Node 将插入写入 WAL 存储；Woodpecker 可直写对象存储（零盘），也可使用 Pulsar/Kafka。",
+        "耐久日志已提交",
+        "data"
+      ],
+      [
+        "写入确认",
+        1,
+        2,
+        "WAL COMMIT",
+        "WAL 提交后具备故障恢复基础；Write-Ahead Buffer 可支持尾读，避免每次回源。",
+        "ACK 条件满足",
+        "data"
+      ],
+      [
+        "进入 Growing",
+        1,
+        3,
+        "GROWING VIEW",
+        "提交后的增量进入 Growing 查询视图，供 SN 实时检索；密封与索引异步推进。",
+        "增量可搜",
+        "data"
+      ]
+    ],
+    "principle": "WAL 是突变的权威前置日志；Streaming Node 拥有分片级写与 Growing 读。",
+    "tradeoff": "Woodpecker 降低 MQ 运维，但要把对象存储与 WAL 配置纳入容量规划；外部 MQ 仍可用但运维模型不同。",
+    "pitfall": "把「insert ACK」理解成「已在所有 QueryNode 索引可搜」；ACK 首先关于 WAL/流式路径，索引与 handoff 仍异步。",
+    "code": [
+      "sn = proxy.locateStreamingNode(shard)",
+      "sn.append(walBackend, InsertMsg(rows, ts))  # Woodpecker/Pulsar/Kafka",
+      "growing.buffer(rows)",
+      "ackClient()"
+    ],
+    "sources": [
+      "arch_overview",
+      "streaming_service",
+      "upgrade_30"
+    ],
+    "related": [
+      "streaming-woodpecker",
+      "segment-lifecycle",
+      "timetravel",
+      "delete-upsert-bitset",
+      "mixcoord-meta",
+      "partition-key"
+    ],
+    "fault": {
+      "name": "WAL 追加受阻",
+      "nodes": [
+        "Proxy",
+        "StreamingNode",
+        "WAL 后端",
+        "监控"
+      ],
+      "steps": [
+        [
+          "客户端持续写入",
+          0,
+          1,
+          "INSERT",
+          "业务压力仍打到 Proxy/SN。",
+          "请求涌入",
+          "request"
+        ],
+        [
+          "WAL 写入超时",
+          1,
+          2,
+          "APPEND TIMEOUT",
+          "Woodpecker/对象存储或外部 MQ 抖动，追加失败或极慢。",
+          "耐久未确认",
+          "lost"
+        ],
+        [
+          "对客户端失败",
+          1,
+          0,
+          "NACK",
+          "未获 WAL 提交则不能假装成功；客户端应重试并注意幂等。",
+          "写入未 ACK",
+          "reject"
+        ],
+        [
+          "告警与排障",
+          1,
+          3,
+          "ALERT",
+          "盯 WAL 错误率、SN 健康与对象存储延迟，而不是只看 Proxy QPS。",
+          "以 WAL 为信号",
+          "control"
+        ]
+      ],
+      "code": [
+        "try: sn.append(wal, msg)",
+        "except Timeout:",
+        "  alert('wal_append_fail'); raise"
+      ]
+    }
+  },
+  {
+    "group": 0,
     "id": "streaming-woodpecker",
     "title": "Streaming · Woodpecker WAL",
     "en": "STREAMING + WOODPECKER",
@@ -1419,8 +669,8 @@ const LESSONS = [
       "woodpecker_admin"
     ],
     "related": [
-      "insert-path",
       "segment-lifecycle",
+      "insert-path",
       "arch-four-layers",
       "timetravel"
     ],
@@ -1479,6 +729,132 @@ const LESSONS = [
   },
   {
     "group": 0,
+    "id": "segment-lifecycle",
+    "title": "段生命周期与密封",
+    "en": "SEGMENT LIFECYCLE · 3.0",
+    "summary": "Milvus 3.0：增量由 Streaming Node 维护为 Growing；密封后成为历史 Sealed，DataNode 建索引，QueryNode 加载；MixCoord 调度 handoff。教学模型，非生产协议证明。",
+    "nodes": [
+      "StreamingNode",
+      "Growing 段",
+      "DataNode",
+      "QueryNode"
+    ],
+    "steps": [
+      [
+        "写入进 Growing",
+        0,
+        1,
+        "APPEND GROWING",
+        "Streaming Node 在分片上追加 WAL 后，把增量保留为可搜的 Growing 段（相对 2.x：不再由 Proxy 直写外部 MQ 再由 DataNode 独自沉淀写入路径）。",
+        "Growing 可搜",
+        "data"
+      ],
+      [
+        "达到密封策略",
+        1,
+        0,
+        "SEAL POLICY",
+        "按段大小/空闲/内存等策略，Streaming Node 将 Growing 转为不可变 Sealed（历史段），并持久相关数据视图。",
+        "Growing → Sealed",
+        "control"
+      ],
+      [
+        "DataNode 建索引",
+        0,
+        2,
+        "BUILD INDEX",
+        "MixCoord 把索引/compaction 等离线任务交给 DataNode（3.0 已合并原 IndexNode）。",
+        "索引产物入对象存储",
+        "request"
+      ],
+      [
+        "QueryNode handoff",
+        2,
+        3,
+        "LOAD / HANDOFF",
+        "QueryNode 从对象存储加载 Sealed+索引；协调器完成从 Growing 到历史检索视图的 handoff。",
+        "历史检索切到 Indexed",
+        "data"
+      ]
+    ],
+    "principle": "Streaming 管增量与密封；DataNode 管离线加工；QueryNode 管历史检索。",
+    "tradeoff": "更早密封利于索引化与稳定延迟，但增加小段与 compaction；过晚则 Growing 内存与实时扫描成本升高。",
+    "pitfall": "不要把 2.x「DataNode 订阅 MQ 写段」当成 3.0 唯一真相：3.0 写入与 Growing 生命周期以 Streaming Node + WAL 为中心。",
+    "code": [
+      "sn = streamingNode.for(pchannel)",
+      "sn.append(wal, rows)           # growing searchable",
+      "sealed = sn.sealWhen(policy)   # immutable historical",
+      "dataNode.buildIndex(sealed)",
+      "mixCoord.handoff(to=queryNode)"
+    ],
+    "sources": [
+      "arch_overview",
+      "streaming_service",
+      "upgrade_30"
+    ],
+    "related": [
+      "load-release",
+      "insert-path",
+      "vector-index",
+      "query-node",
+      "compaction-clustering",
+      "storage-v3"
+    ],
+    "fault": {
+      "name": "密封滞后 · Growing 膨胀",
+      "nodes": [
+        "写入压力",
+        "StreamingNode",
+        "对象存储",
+        "查询路径"
+      ],
+      "steps": [
+        [
+          "持续高压写入",
+          0,
+          1,
+          "BURST APPEND",
+          "短时大量追加使 Growing 远超习惯工作集；Streaming Node 仍要提供 Growing 查询。",
+          "Growing 行数激增",
+          "data"
+        ],
+        [
+          "密封任务受阻",
+          1,
+          1,
+          "SEAL DELAY",
+          "资源或策略导致密封推迟；历史段与索引尚未就绪。",
+          "仍停在 Growing",
+          "local"
+        ],
+        [
+          "持久化变慢",
+          1,
+          2,
+          "SLOW PERSIST",
+          "对象存储抖动拖慢密封/持久；教学用一次慢写入代表存储延迟。",
+          "历史视图未就绪",
+          "lost"
+        ],
+        [
+          "查询代价偏高",
+          1,
+          3,
+          "HEAVY GROWING",
+          "handoff 前更多工作落在 Growing 路径；应观察密封滞后而非只看 insert QPS。",
+          "可搜但成本高",
+          "check"
+        ]
+      ],
+      "code": [
+        "if growing.bytes > budget and seal.lagging():",
+        "  alert('seal_pending / growing_bytes')",
+        "  # do not assume indexed sealed already serving"
+      ]
+    }
+  },
+  {
+    "group": 1,
     "id": "load-release",
     "title": "Load / Release",
     "en": "LOAD · RELEASE · SEGMENTS",
@@ -1603,128 +979,378 @@ const LESSONS = [
   },
   {
     "group": 1,
-    "id": "delete-upsert-bitset",
-    "title": "Delete/Upsert · Bitset",
-    "en": "DELETE · UPSERT · BITSET",
-    "summary": "删除多为段内软删 bitset；过滤 bitset 与删除 bitset 在检索前求交；Upsert 教学上可视为按主键删后插。与 Time Travel 水位交叉。教学简化。",
+    "id": "query-node",
+    "title": "查询归并 · SN + QN",
+    "en": "SEARCH PATH · 3.0",
+    "summary": "3.0 查询：Proxy 将请求交给持有分片的 Streaming Node；SN 查 Growing 并作为 Query Delegator 联系 QueryNode 查 Sealed，再多层归并。",
     "nodes": [
-      "客户端",
-      "StreamingNode / WAL",
-      "删除 Bitset",
-      "查询计划"
+      "Proxy",
+      "StreamingNode",
+      "QueryNode",
+      "对象存储"
     ],
     "steps": [
       [
-        "提交 Delete/Upsert",
+        "Proxy 路由到 SN",
         0,
         1,
-        "DELETE/UPSERT",
-        "按主键或 filter 删除，或 Upsert；突变先入 WAL/流式路径。",
-        "突变已进日志",
-        "data"
+        "ROUTE SHARD",
+        "Proxy 按分片把 search 交给对应 Streaming Node（相对 2.x：查询委托不再主要落在 QueryNode 侧）。",
+        "SN 收到查询",
+        "request"
       ],
       [
-        "标记软删",
-        1,
-        2,
-        "SET DEL BIT",
-        "对应行在段删除 bitset 置位；物理空间稍后由 compaction 回收。",
-        "行逻辑删除",
-        "control"
-      ],
-      [
-        "与过滤求交",
-        2,
-        3,
-        "AND BITSETS",
-        "检索时 filter_bitset 与 del_bitset（及时间可见性）组合，得到可计算行集。",
-        "候选行掩码",
-        "check"
-      ],
-      [
-        "Upsert 再插入",
+        "SN 查 Growing",
         1,
         1,
-        "RE-INSERT",
-        "Upsert：删旧后插入新版本行（新 ts）；可见性仍受一致性级别约束。",
-        "新版本可写",
+        "SEARCH GROWING",
+        "Streaming Node 本地检索 Growing，并生成/协调查询计划。",
+        "增量候选就绪",
         "local"
+      ],
+      [
+        "QN 查 Sealed",
+        1,
+        2,
+        "SEARCH SEALED",
+        "SN 联系已 Load 的 QueryNode；QN 必要时从对象存储加载历史段/索引并检索。",
+        "历史候选就绪",
+        "request"
+      ],
+      [
+        "多层归并返回",
+        2,
+        0,
+        "REDUCE TOPK",
+        "QueryNode 段级归并 → Streaming Node 分片归并 → Proxy 全局归并后返回客户端。",
+        "全局 TopK",
+        "data"
       ]
     ],
-    "principle": "删除首先改可见性掩码，不是立刻抹掉对象存储文件；查询永远先过 bitset。",
-    "tradeoff": "软删使删除很快，但段内空洞升高，依赖 compaction；强一致读删除结果仍要等水位。",
-    "pitfall": "bitset 文档示例里 filter/delete 组合与 Time Travel 细节以当前版本文档为准；勿把「delete ACK」当成「物理文件已删」。",
+    "principle": "流批分离：SN 管增量与委托，QN 管历史，Proxy 做最终归并。",
+    "tradeoff": "委托上收到 SN 改善写侧共识与扩展，但运维需同时关注 SN 与 QN 健康；未 Load 则历史段不可用。",
+    "pitfall": "仍按 2.x 思维假设「Proxy 只打 QueryNode」会误判故障面；3.0 要同时看 Streaming Node。",
     "code": [
-      "sn.append(wal, Delete(pks_or_expr, ts))",
-      "del_bitset.mark(rows)",
-      "visible = filter_bitset AND NOT del_bitset  # teaching",
-      "# upsert ≈ delete(pk) + insert(new_row)"
+      "sn = proxy.shardStreamingNode(collection, shard)",
+      "growing = sn.searchGrowing(q, k)",
+      "sealed = sn.delegator.queryNodes.searchSealed(q, k)",
+      "return proxy.reduce(sn.reduce(growing, sealed))"
     ],
     "sources": [
-      "bitset",
-      "delete_entities",
-      "upsert_entities"
+      "arch_overview",
+      "streaming_service",
+      "replica"
     ],
     "related": [
-      "timetravel",
-      "insert-path",
-      "filtered-search",
-      "compaction-clustering"
+      "vector-index",
+      "load-release",
+      "hybrid-search-rrf",
+      "segment-lifecycle",
+      "replica-failover",
+      "arch-four-layers"
     ],
     "fault": {
-      "name": "删后弱读仍见旧行",
+      "name": "集合未 Load",
       "nodes": [
-        "写入方",
-        "Eventually 查询",
-        "Bitset 水位",
-        "Strong 复检"
+        "客户端",
+        "Proxy",
+        "MixCoord",
+        "空 QueryNode"
       ],
       "steps": [
         [
-          "Delete 已 ACK",
-          0,
-          0,
-          "DELETE ACK",
-          "客户端收到删除成功。",
-          "日志已提交",
-          "local"
-        ],
-        [
-          "弱读仍命中",
+          "直接 Search",
           0,
           1,
-          "STALE HIT",
-          "Eventually 下仍可能短暂看见旧行。",
-          "可见性滞后",
+          "SEARCH",
+          "集合尚未 Load，无可用历史查询视图。",
+          "缺 serving view",
           "request"
         ],
         [
-          "水位未追上",
-          2,
+          "协调器无视图",
           1,
-          "WATERMARK LAG",
-          "删除对应 ts 尚未进入可读水位。",
-          "掩码未生效",
-          "lost"
+          2,
+          "LOOKUP VIEW",
+          "MixCoord/查询视图中没有可服务的段分布。",
+          "路由失败",
+          "check"
         ],
         [
-          "Strong 复检",
-          0,
+          "请求被拒绝",
+          2,
+          1,
+          "REJECT",
+          "教学模型：明确失败优于静默空结果被当成「没数据」。",
+          "查询未执行",
+          "reject"
+        ],
+        [
+          "Load 后再搜",
+          2,
           3,
-          "RECHECK",
-          "提高一致性级别后旧行消失；先核对级别再报丢删。",
-          "语义对齐",
-          "check"
+          "LOAD",
+          "执行 Load，QueryNode 拉取 Sealed；再经 SN 路径搜索。",
+          "可服务",
+          "control"
         ]
       ],
       "code": [
-        "delete(pk)",
-        "assert pk not in search(level=Strong)"
+        "if not collection.isLoaded: raise CollectionNotLoaded",
+        "collection.load()",
+        "return search(...)"
       ]
     }
   },
   {
-    "group": 0,
+    "group": 1,
+    "id": "vector-index",
+    "title": "向量索引检索路径",
+    "en": "IVF_FLAT / HNSW",
+    "summary": "索引仍由 DataNode 等离线构建并落对象存储；查询时 Sealed 走索引，Growing 走实时路径。本课用 IVF_FLAT 与 HNSW 对照教学。",
+    "nodes": [
+      "查询向量",
+      "IVF 粗排",
+      "HNSW 图",
+      "候选精排"
+    ],
+    "steps": [
+      [
+        "选择索引方案",
+        0,
+        1,
+        "PICK INDEX",
+        "为向量字段选择 IVF_FLAT 或 HNSW 等；3.0 中索引构建任务由统一调度下发到 DataNode。",
+        "索引类型已选定",
+        "compare"
+      ],
+      [
+        "IVF：近邻桶",
+        0,
+        1,
+        "nprobe BUCKETS",
+        "先选 nprobe 个近邻簇，只扫描桶内向量，降低全库扫描。",
+        "候选 ⊂ 全库",
+        "request"
+      ],
+      [
+        "HNSW：图跳跃",
+        0,
+        2,
+        "GRAPH WALK",
+        "从高层入口贪心下行，用 ef 控制探索宽度，得到候选集。",
+        "候选沿边扩展",
+        "request"
+      ],
+      [
+        "精排 TopK",
+        3,
+        0,
+        "TOPK DIST",
+        "对候选算度量并取 TopK。参数与召回/延迟权衡见官方索引页。",
+        "返回近似近邻",
+        "data"
+      ]
+    ],
+    "principle": "索引用可接受近似换掉数量级扫描；Growing 与 Sealed 路径不同，归并在查询计划里完成。",
+    "tradeoff": "IVF 参数直观；HNSW 常更高召回但构图与内存更贵。二者都不是默认的精确全局扫描。",
+    "pitfall": "把 nprobe/ef 调极大 ≠ 精确检索；精确需求用 FLAT/明确精确模式，并承担代价。",
+    "code": [
+      "if index == IVF_FLAT:",
+      "  buckets = pickNearestCentroids(q, nprobe)",
+      "  cands = scan(buckets)",
+      "elif index == HNSW:",
+      "  cands = greedySearch(graph, q, ef)",
+      "return topK(exactDistance(q, cands))"
+    ],
+    "sources": [
+      "index_overview",
+      "ivf_flat",
+      "hnsw"
+    ],
+    "related": [
+      "filtered-search",
+      "hybrid-search-rrf",
+      "query-node",
+      "segment-lifecycle",
+      "insert-path"
+    ],
+    "fault": {
+      "name": "参数过小 · 召回塌陷",
+      "nodes": [
+        "查询向量",
+        "过小 nprobe",
+        "过小 ef",
+        "评测集"
+      ],
+      "steps": [
+        [
+          "上线偏小参数",
+          0,
+          1,
+          "nprobe=1",
+          "为追延迟压低 nprobe/ef，探索覆盖不足。",
+          "候选过窄",
+          "request"
+        ],
+        [
+          "真近邻未进入",
+          1,
+          3,
+          "MISS TRUE NN",
+          "真近邻所在桶/子图未被触及，结果缺关键项。",
+          "召回下降",
+          "reject"
+        ],
+        [
+          "提高探索对照",
+          0,
+          2,
+          "RAISE ef/nprobe",
+          "在评测集上提高参数，观察召回-延迟曲线。",
+          "召回↑ 延迟↑",
+          "compare"
+        ],
+        [
+          "固化评测门槛",
+          3,
+          3,
+          "RECALL GATE",
+          "发布前用召回门槛约束参数；索引是产品决策。",
+          "先测再调",
+          "local"
+        ]
+      ],
+      "code": [
+        "recall = evaluate(topk, groundTruth)",
+        "if recall < gate: raise nprobe_or_ef"
+      ]
+    }
+  },
+  {
+    "group": 1,
+    "id": "filtered-search",
+    "title": "过滤检索 · Bitset",
+    "en": "FILTERED SEARCH · BITSET",
+    "summary": "标量 filter 生成 bitset，与删除/时间可见性掩码求交后，再在幸存行上做 ANN 或迭代过滤。教学对照 pre-filter 直觉与 iterative filtering。",
+    "nodes": [
+      "查询 + Filter",
+      "Filter Bitset",
+      "删除/时间掩码",
+      "ANN 候选"
+    ],
+    "steps": [
+      [
+        "解析过滤表达式",
+        0,
+        1,
+        "EVAL FILTER",
+        "布尔表达式落到标量索引/扫描，得到 filter_bitset。",
+        "属性掩码就绪",
+        "request"
+      ],
+      [
+        "与删除掩码求交",
+        1,
+        2,
+        "AND DEL",
+        "去掉已删且在读快照下不可见的行。",
+        "可计算行集",
+        "check"
+      ],
+      [
+        "向量检索",
+        2,
+        3,
+        "ANN ON MASK",
+        "在掩码约束下检索（或迭代过滤：先向量再滤）。",
+        "候选生成",
+        "data"
+      ],
+      [
+        "返回 TopK",
+        3,
+        0,
+        "TOPK",
+        "对幸存候选精排返回；复杂 filter 可能走 iterative 路径。",
+        "过滤后近邻",
+        "data"
+      ]
+    ],
+    "principle": "过滤检索的本质是 bitset 与 ANN 的协同，不是「先全库 ANN 再偶然滤一下」的默认保证。",
+    "tradeoff": "高选择性 filter 宜尽早剪枝；极复杂表达式可能更适合 iterative filtering，但迭代有延迟风险。",
+    "pitfall": "漏写 Partition Key 条件会导致跨分区全扫；filter 与 delete bitset 语义以文档为准，勿与 SQL WHERE 一一等同。",
+    "code": [
+      "filter_bs = eval(expr)",
+      "alive = filter_bs AND NOT del_bs AND visible(ts)",
+      "cands = ann(q, mask=alive)  # or iterative_filter(ann, expr)",
+      "return topK(cands)"
+    ],
+    "sources": [
+      "filtered_search",
+      "bitset",
+      "index_overview"
+    ],
+    "related": [
+      "hybrid-search-rrf",
+      "vector-index",
+      "delete-upsert-bitset",
+      "partition-key"
+    ],
+    "fault": {
+      "name": "过滤过宽 · 几乎全扫",
+      "nodes": [
+        "松散 Filter",
+        "巨大 Bitset",
+        "ANN",
+        "延迟尖刺"
+      ],
+      "steps": [
+        [
+          "极宽条件",
+          0,
+          1,
+          "WEAK FILTER",
+          "filter 几乎为真，掩码接近全 1。",
+          "剪枝失效",
+          "request"
+        ],
+        [
+          "候选爆炸",
+          1,
+          2,
+          "HUGE SET",
+          "ANN/标量路径近似全段扫描。",
+          "代价≈无过滤",
+          "data"
+        ],
+        [
+          "延迟升高",
+          2,
+          3,
+          "LATENCY",
+          "尾延迟与 CPU 飙升。",
+          "体验变差",
+          "lost"
+        ],
+        [
+          "收紧或分区",
+          0,
+          0,
+          "TIGHTEN",
+          "加 Partition Key / 聚类键 / 更有选择性谓词。",
+          "恢复剪枝",
+          "local"
+        ]
+      ],
+      "code": [
+        "if selectivity(expr) < gate:",
+        "  prefer partition_key_or_clustering(expr)"
+      ]
+    }
+  },
+  {
+    "group": 1,
     "id": "hybrid-search-rrf",
     "title": "混合检索 · RRF",
     "en": "HYBRID SEARCH · RRF",
@@ -1789,9 +1415,9 @@ const LESSONS = [
       "index_overview"
     ],
     "related": [
+      "filtered-search",
       "query-node",
       "vector-index",
-      "filtered-search",
       "load-release"
     ],
     "fault": {
@@ -1847,124 +1473,491 @@ const LESSONS = [
     }
   },
   {
-    "group": 0,
-    "id": "filtered-search",
-    "title": "过滤检索 · Bitset",
-    "en": "FILTERED SEARCH · BITSET",
-    "summary": "标量 filter 生成 bitset，与删除/时间可见性掩码求交后，再在幸存行上做 ANN 或迭代过滤。教学对照 pre-filter 直觉与 iterative filtering。",
+    "group": 2,
+    "id": "timetravel",
+    "title": "时间戳与可见性",
+    "en": "TSO / TIMETICK · 3.0",
+    "summary": "MixCoord 提供集群 TSO；Streaming Node / WAL 推进 TimeTick 与可读水位；查询用 guarantee 时间判断可见集。教学简化。",
     "nodes": [
-      "查询 + Filter",
-      "Filter Bitset",
-      "删除/时间掩码",
-      "ANN 候选"
+      "MixCoord · TSO",
+      "StreamingNode",
+      "TimeTick",
+      "查询快照"
     ],
     "steps": [
       [
-        "解析过滤表达式",
+        "分配时间戳",
         0,
         1,
-        "EVAL FILTER",
-        "布尔表达式落到标量索引/扫描，得到 filter_bitset。",
-        "属性掩码就绪",
+        "ALLOC TS",
+        "插入等从 MixCoord 的 TSO 取得单调时间戳（3.0 协调器合并后仍承担 TSO 职责）。",
+        "msg.ts = T",
         "request"
       ],
       [
-        "与删除掩码求交",
+        "按 TS 入 WAL",
+        1,
+        1,
+        "ORDERED LOG",
+        "Streaming Node 按 TSO 顺序维护 WAL 可读序列；同通道内总序由此约束。",
+        "有序日志",
+        "local"
+      ],
+      [
+        "推进 TimeTick",
         1,
         2,
-        "AND DEL",
-        "去掉已删且在读快照下不可见的行。",
-        "可计算行集",
-        "check"
+        "TIMETICK",
+        "TimeTick 声明此前时间戳消息已齐，推动分片可读水位。",
+        "watermark ↑",
+        "control"
       ],
       [
-        "向量检索",
+        "查询读快照",
         2,
         3,
-        "ANN ON MASK",
-        "在掩码约束下检索（或迭代过滤：先向量再滤）。",
-        "候选生成",
-        "data"
-      ],
-      [
-        "返回 TopK",
-        3,
-        0,
-        "TOPK",
-        "对幸存候选精排返回；复杂 filter 可能走 iterative 路径。",
-        "过滤后近邻",
-        "data"
+        "READ AT Ts",
+        "查询携带 guaranteeTs / 一致性策略，只看见水位允许的插入集合。",
+        "可见 ≤ readTs",
+        "check"
       ]
     ],
-    "principle": "过滤检索的本质是 bitset 与 ANN 的协同，不是「先全库 ANN 再偶然滤一下」的默认保证。",
-    "tradeoff": "高选择性 filter 宜尽早剪枝；极复杂表达式可能更适合 iterative filtering，但迭代有延迟风险。",
-    "pitfall": "漏写 Partition Key 条件会导致跨分区全扫；filter 与 delete bitset 语义以文档为准，勿与 SQL WHERE 一一等同。",
+    "principle": "可见性由时间戳与水位共同决定，不是单独由 insert 返回决定。",
+    "tradeoff": "更强即时可见要等更高水位；放宽级别可降延迟但读到更旧视图。",
+    "pitfall": "Timetravel/travel 语义以当前版本文档为准，并受保留与压缩策略限制。",
     "code": [
-      "filter_bs = eval(expr)",
-      "alive = filter_bs AND NOT del_bs AND visible(ts)",
-      "cands = ann(q, mask=alive)  # or iterative_filter(ann, expr)",
-      "return topK(cands)"
+      "ts = mixCoord.allocTimestamp()",
+      "sn.append(wal, Insert(ts))",
+      "sn.onTimeTick(tickTs)",
+      "visible = rows where row.ts <= readTs and tickOk(readTs)"
     ],
     "sources": [
-      "filtered_search",
-      "bitset",
-      "index_overview"
+      "timestamps",
+      "streaming_service",
+      "consistency"
     ],
     "related": [
-      "vector-index",
+      "consistency-levels",
+      "insert-path",
       "delete-upsert-bitset",
-      "partition-key",
-      "timetravel"
+      "mixcoord-meta",
+      "filtered-search"
     ],
     "fault": {
-      "name": "过滤过宽 · 几乎全扫",
+      "name": "TimeTick 停滞",
       "nodes": [
-        "松散 Filter",
-        "巨大 Bitset",
-        "ANN",
-        "延迟尖刺"
+        "StreamingNode",
+        "卡住的 Tick",
+        "Strong 查询",
+        "陈旧视图"
       ],
       "steps": [
         [
-          "极宽条件",
+          "WAL 仍可追加",
+          0,
+          0,
+          "APPEND OK",
+          "业务写入偶发仍成功，日志继续。",
+          "日志在前进",
+          "local"
+        ],
+        [
+          "Tick 未推进",
           0,
           1,
-          "WEAK FILTER",
-          "filter 几乎为真，掩码接近全 1。",
-          "剪枝失效",
+          "TICK STALL",
+          "TimeTick 同步异常，可读水位冻结。",
+          "watermark 停",
+          "lost"
+        ],
+        [
+          "强读等待",
+          2,
+          1,
+          "WAIT WATERMARK",
+          "Strong 等待水位追上 guaranteeTs，延迟升高或超时。",
+          "读被挡住",
+          "check"
+        ],
+        [
+          "弱读见旧视图",
+          2,
+          3,
+          "STALE READ",
+          "Eventually/旧会话可能长时间看不到新行；先查 Tick/SN 健康。",
+          "可见性滞后",
+          "reject"
+        ]
+      ],
+      "code": [
+        "if now - lastTimeTick > budget:",
+        "  alert('timetick_stall')"
+      ]
+    }
+  },
+  {
+    "group": 2,
+    "id": "consistency-levels",
+    "title": "四级一致性行为",
+    "en": "CONSISTENCY LEVELS",
+    "summary": "Strong / Bounded / Session / Eventually 描述查询相对写入的新鲜度承诺；3.0 仍通过流式水位与会话语义兑现，本课讲行为差异。",
+    "nodes": [
+      "写入完成",
+      "Strong 读",
+      "Session 读",
+      "Eventually 读"
+    ],
+    "steps": [
+      [
+        "写入已 ACK",
+        0,
+        0,
+        "INSERT ACK",
+        "WAL 路径确认后客户端收到成功；后续读的可见性仍取决于级别。",
+        "写入已确认",
+        "local"
+      ],
+      [
+        "Strong：等到齐",
+        0,
+        1,
+        "READ STRONG",
+        "等待相关水位满足后再读，通常延迟最高、新鲜度最强。",
+        "必见已确认写",
+        "check"
+      ],
+      [
+        "Session：读己之写",
+        0,
+        2,
+        "READ SESSION",
+        "同一会话能读到自己写过的内容；跨会话不承诺立刻看见他人写入。",
+        "会话内一致",
+        "check"
+      ],
+      [
+        "Eventually：尽快",
+        0,
+        3,
+        "READ EVENTUAL",
+        "用较旧快照尽快返回；Bounded 限制陈旧上限。都是延迟-新鲜度旋钮。",
+        "可能短暂陈旧",
+        "compare"
+      ]
+    ],
+    "principle": "一致性级别是 API 上的新鲜度旋钮，不是四套无关存储引擎。",
+    "tradeoff": "更强一致 → 更高尾延迟；更弱 → 更快但要容忍短暂旧读。",
+    "pitfall": "在 Eventually 下做写后即读校验失败时，误判丢数；先核对级别与会话。",
+    "code": [
+      "insert(rows)",
+      "search(level=Strong)",
+      "search(level=Session)",
+      "search(level=Eventually)",
+      "search(level=Bounded, window=τ)"
+    ],
+    "sources": [
+      "consistency",
+      "timestamps",
+      "streaming_service"
+    ],
+    "related": [
+      "timetravel",
+      "delete-upsert-bitset",
+      "insert-path",
+      "query-node"
+    ],
+    "fault": {
+      "name": "级别误用 · 误判丢数",
+      "nodes": [
+        "写入客户端",
+        "Eventually 查询",
+        "校验脚本",
+        "Strong 复检"
+      ],
+      "steps": [
+        [
+          "写后立刻弱读",
+          0,
+          1,
+          "WRITE→EVENTUAL",
+          "Eventually 下立刻 search，未看见新行。",
+          "结果缺新行",
           "request"
         ],
         [
-          "候选爆炸",
+          "误报丢失",
           1,
           2,
-          "HUGE SET",
-          "ANN/标量路径近似全段扫描。",
-          "代价≈无过滤",
+          "FALSE ALARM",
+          "把「不可见」当成「丢失」。",
+          "告警噪声",
+          "reject"
+        ],
+        [
+          "Strong/Session 复检",
+          0,
+          3,
+          "RECHECK",
+          "提高级别后新行出现。",
+          "数据仍在",
+          "check"
+        ],
+        [
+          "校正测试",
+          2,
+          2,
+          "FIX TEST",
+          "测试显式设置与业务匹配的级别。",
+          "语义对齐",
+          "local"
+        ]
+      ],
+      "code": [
+        "insert(row)",
+        "assert row in search(level=Session)  # or Strong"
+      ]
+    }
+  },
+  {
+    "group": 2,
+    "id": "delete-upsert-bitset",
+    "title": "Delete/Upsert · Bitset",
+    "en": "DELETE · UPSERT · BITSET",
+    "summary": "删除多为段内软删 bitset；过滤 bitset 与删除 bitset 在检索前求交；Upsert 教学上可视为按主键删后插。与 Time Travel 水位交叉。教学简化。",
+    "nodes": [
+      "客户端",
+      "StreamingNode / WAL",
+      "删除 Bitset",
+      "查询计划"
+    ],
+    "steps": [
+      [
+        "提交 Delete/Upsert",
+        0,
+        1,
+        "DELETE/UPSERT",
+        "按主键或 filter 删除，或 Upsert；突变先入 WAL/流式路径。",
+        "突变已进日志",
+        "data"
+      ],
+      [
+        "标记软删",
+        1,
+        2,
+        "SET DEL BIT",
+        "对应行在段删除 bitset 置位；物理空间稍后由 compaction 回收。",
+        "行逻辑删除",
+        "control"
+      ],
+      [
+        "与过滤求交",
+        2,
+        3,
+        "AND BITSETS",
+        "检索时 filter_bitset 与 del_bitset（及时间可见性）组合，得到可计算行集。",
+        "候选行掩码",
+        "check"
+      ],
+      [
+        "Upsert 再插入",
+        1,
+        1,
+        "RE-INSERT",
+        "Upsert：删旧后插入新版本行（新 ts）；可见性仍受一致性级别约束。",
+        "新版本可写",
+        "local"
+      ]
+    ],
+    "principle": "删除首先改可见性掩码，不是立刻抹掉对象存储文件；查询永远先过 bitset。",
+    "tradeoff": "软删使删除很快，但段内空洞升高，依赖 compaction；强一致读删除结果仍要等水位。",
+    "pitfall": "bitset 文档示例里 filter/delete 组合与 Time Travel 细节以当前版本文档为准；勿把「delete ACK」当成「物理文件已删」。",
+    "code": [
+      "sn.append(wal, Delete(pks_or_expr, ts))",
+      "del_bitset.mark(rows)",
+      "visible = filter_bitset AND NOT del_bitset  # teaching",
+      "# upsert ≈ delete(pk) + insert(new_row)"
+    ],
+    "sources": [
+      "bitset",
+      "delete_entities",
+      "upsert_entities"
+    ],
+    "related": [
+      "partition-key",
+      "timetravel",
+      "insert-path",
+      "filtered-search"
+    ],
+    "fault": {
+      "name": "删后弱读仍见旧行",
+      "nodes": [
+        "写入方",
+        "Eventually 查询",
+        "Bitset 水位",
+        "Strong 复检"
+      ],
+      "steps": [
+        [
+          "Delete 已 ACK",
+          0,
+          0,
+          "DELETE ACK",
+          "客户端收到删除成功。",
+          "日志已提交",
+          "local"
+        ],
+        [
+          "弱读仍命中",
+          0,
+          1,
+          "STALE HIT",
+          "Eventually 下仍可能短暂看见旧行。",
+          "可见性滞后",
+          "request"
+        ],
+        [
+          "水位未追上",
+          2,
+          1,
+          "WATERMARK LAG",
+          "删除对应 ts 尚未进入可读水位。",
+          "掩码未生效",
+          "lost"
+        ],
+        [
+          "Strong 复检",
+          0,
+          3,
+          "RECHECK",
+          "提高一致性级别后旧行消失；先核对级别再报丢删。",
+          "语义对齐",
+          "check"
+        ]
+      ],
+      "code": [
+        "delete(pk)",
+        "assert pk not in search(level=Strong)"
+      ]
+    }
+  },
+  {
+    "group": 2,
+    "id": "partition-key",
+    "title": "Partition Key 路由",
+    "en": "PARTITION KEY ROUTING",
+    "summary": "指定标量字段为 Partition Key 后，集合内自动维护固定数量分区；写入按 hash(key)%N 落入分区，检索带该键 filter 时只扫命中分区。用于多租户与剪枝。教学模型。",
+    "nodes": [
+      "写入实体",
+      "Hash 路由",
+      "目标分区",
+      "带键检索"
+    ],
+    "steps": [
+      [
+        "声明 Partition Key",
+        0,
+        0,
+        "SCHEMA",
+        "建表时标记标量字段为 Partition Key，并设定 partitions_num。",
+        "分区池已建",
+        "local"
+      ],
+      [
+        "写入哈希落点",
+        0,
+        1,
+        "HASH KEY",
+        "insert 时用键值哈希并对分区数取模。",
+        "路由函数确定",
+        "control"
+      ],
+      [
+        "落入分区",
+        1,
+        2,
+        "INSERT PART",
+        "实体写入对应分区的段/流式路径。",
+        "数据已隔离落点",
+        "data"
+      ],
+      [
+        "检索剪枝",
+        3,
+        2,
+        "FILTER KEY",
+        "search 带 Partition Key 条件时只扫描匹配分区。",
+        "搜索范围缩小",
+        "check"
+      ]
+    ],
+    "principle": "Partition Key 用固定分区池换「按键隔离 + 检索剪枝」，突破手工分区数量与运维负担。",
+    "tradeoff": "键分布不均可致热点分区；漏写键条件则退化为多分区扫描。",
+    "pitfall": "手工 manage-partitions 与 Partition Key 是两条路，不要混用心智模型；检索 filter 必须能落到 Partition Key 才有剪枝。",
+    "code": [
+      "part_id = hash(entity[partition_key]) % partitions_num",
+      "insert_into(partition=part_id, entity)",
+      "search(filter=f\"{partition_key} == x\")  # prune to parts"
+    ],
+    "sources": [
+      "partition_key",
+      "manage_partitions",
+      "filtered_search"
+    ],
+    "related": [
+      "delete-upsert-bitset",
+      "filtered-search",
+      "insert-path",
+      "hybrid-search-rrf"
+    ],
+    "fault": {
+      "name": "漏写键条件 · 全分区扫",
+      "nodes": [
+        "查询",
+        "无键 Filter",
+        "全部分区",
+        "延迟"
+      ],
+      "steps": [
+        [
+          "检索未带键",
+          0,
+          1,
+          "NO KEY FILTER",
+          "业务 filter 未包含 Partition Key。",
+          "无法剪枝",
+          "request"
+        ],
+        [
+          "扫过所有分区",
+          1,
+          2,
+          "SCAN ALL",
+          "计划覆盖分区池全部成员。",
+          "范围≈全集",
           "data"
         ],
         [
-          "延迟升高",
+          "延迟尖刺",
           2,
           3,
           "LATENCY",
-          "尾延迟与 CPU 飙升。",
+          "多租户场景被放大。",
           "体验变差",
           "lost"
         ],
         [
-          "收紧或分区",
+          "强制带键",
           0,
           0,
-          "TIGHTEN",
-          "加 Partition Key / 聚类键 / 更有选择性谓词。",
+          "REQUIRE KEY",
+          "API/网关要求查询必须带租户键。",
           "恢复剪枝",
           "local"
         ]
       ],
       "code": [
-        "if selectivity(expr) < gate:",
-        "  prefer partition_key_or_clustering(expr)"
+        "if partition_key not in filter:",
+        "  raise MissingPartitionKeyFilter"
       ]
     }
   },
@@ -2033,9 +2026,9 @@ const LESSONS = [
       "arch_overview"
     ],
     "related": [
+      "storage-v3",
       "segment-lifecycle",
       "filtered-search",
-      "storage-v3",
       "delete-upsert-bitset"
     ],
     "fault": {
@@ -2087,127 +2080,6 @@ const LESSONS = [
       "code": [
         "if pending_compactions > budget:",
         "  alert('compaction_backlog'); scale_data_nodes()"
-      ]
-    }
-  },
-  {
-    "group": 1,
-    "id": "partition-key",
-    "title": "Partition Key 路由",
-    "en": "PARTITION KEY ROUTING",
-    "summary": "指定标量字段为 Partition Key 后，集合内自动维护固定数量分区；写入按 hash(key)%N 落入分区，检索带该键 filter 时只扫命中分区。用于多租户与剪枝。教学模型。",
-    "nodes": [
-      "写入实体",
-      "Hash 路由",
-      "目标分区",
-      "带键检索"
-    ],
-    "steps": [
-      [
-        "声明 Partition Key",
-        0,
-        0,
-        "SCHEMA",
-        "建表时标记标量字段为 Partition Key，并设定 partitions_num。",
-        "分区池已建",
-        "local"
-      ],
-      [
-        "写入哈希落点",
-        0,
-        1,
-        "HASH KEY",
-        "insert 时用键值哈希并对分区数取模。",
-        "路由函数确定",
-        "control"
-      ],
-      [
-        "落入分区",
-        1,
-        2,
-        "INSERT PART",
-        "实体写入对应分区的段/流式路径。",
-        "数据已隔离落点",
-        "data"
-      ],
-      [
-        "检索剪枝",
-        3,
-        2,
-        "FILTER KEY",
-        "search 带 Partition Key 条件时只扫描匹配分区。",
-        "搜索范围缩小",
-        "check"
-      ]
-    ],
-    "principle": "Partition Key 用固定分区池换「按键隔离 + 检索剪枝」，突破手工分区数量与运维负担。",
-    "tradeoff": "键分布不均可致热点分区；漏写键条件则退化为多分区扫描。",
-    "pitfall": "手工 manage-partitions 与 Partition Key 是两条路，不要混用心智模型；检索 filter 必须能落到 Partition Key 才有剪枝。",
-    "code": [
-      "part_id = hash(entity[partition_key]) % partitions_num",
-      "insert_into(partition=part_id, entity)",
-      "search(filter=f\"{partition_key} == x\")  # prune to parts"
-    ],
-    "sources": [
-      "partition_key",
-      "manage_partitions",
-      "filtered_search"
-    ],
-    "related": [
-      "filtered-search",
-      "insert-path",
-      "hybrid-search-rrf",
-      "compaction-clustering"
-    ],
-    "fault": {
-      "name": "漏写键条件 · 全分区扫",
-      "nodes": [
-        "查询",
-        "无键 Filter",
-        "全部分区",
-        "延迟"
-      ],
-      "steps": [
-        [
-          "检索未带键",
-          0,
-          1,
-          "NO KEY FILTER",
-          "业务 filter 未包含 Partition Key。",
-          "无法剪枝",
-          "request"
-        ],
-        [
-          "扫过所有分区",
-          1,
-          2,
-          "SCAN ALL",
-          "计划覆盖分区池全部成员。",
-          "范围≈全集",
-          "data"
-        ],
-        [
-          "延迟尖刺",
-          2,
-          3,
-          "LATENCY",
-          "多租户场景被放大。",
-          "体验变差",
-          "lost"
-        ],
-        [
-          "强制带键",
-          0,
-          0,
-          "REQUIRE KEY",
-          "API/网关要求查询必须带租户键。",
-          "恢复剪枝",
-          "local"
-        ]
-      ],
-      "code": [
-        "if partition_key not in filter:",
-        "  raise MissingPartitionKeyFilter"
       ]
     }
   },
@@ -2276,10 +2148,10 @@ const LESSONS = [
       "upgrade_30"
     ],
     "related": [
+      "tiered-storage",
       "snapshots",
       "compaction-clustering",
-      "segment-lifecycle",
-      "tiered-storage"
+      "segment-lifecycle"
     ],
     "fault": {
       "name": "布局冲突 · flush 失败",
@@ -2398,10 +2270,10 @@ const LESSONS = [
       "load_release"
     ],
     "related": [
+      "snapshots",
       "load-release",
-      "query-node",
       "storage-v3",
-      "segment-lifecycle"
+      "query-node"
     ],
     "fault": {
       "name": "冷查询延迟尖刺",
@@ -2521,10 +2393,10 @@ const LESSONS = [
       "storage_v3"
     ],
     "related": [
+      "replica-failover",
       "storage-v3",
       "segment-lifecycle",
-      "compaction-clustering",
-      "load-release"
+      "compaction-clustering"
     ],
     "fault": {
       "name": "未 Pin · 引用失效",
@@ -2580,7 +2452,131 @@ const LESSONS = [
     }
   },
   {
-    "group": 2,
+    "group": 3,
+    "id": "replica-failover",
+    "title": "副本与故障切换",
+    "en": "REPLICA / FAILOVER · 3.0",
+    "summary": "历史段可在多 QueryNode 上多副本；Streaming Node 通过 WAL fencing 在节点间迁移以保分流式 HA。本课主场景讲查询副本，故障场景讲 QN 宕机切换。",
+    "nodes": [
+      "Proxy",
+      "StreamingNode",
+      "QueryNode-1",
+      "QueryNode-2"
+    ],
+    "steps": [
+      [
+        "配置多副本",
+        0,
+        1,
+        "SET REPLICAS",
+        "Load 指定 replica；MixCoord 把 Sealed 分布到多个 QueryNode。",
+        "副本因子 = N",
+        "control"
+      ],
+      [
+        "SN 委托查询",
+        1,
+        2,
+        "DELEGATE",
+        "Streaming Node 作为分片委托，将 Sealed 检索打到健康 QueryNode。",
+        "QN-1 服务中",
+        "request"
+      ],
+      [
+        "副本待命",
+        1,
+        3,
+        "STANDBY",
+        "QN-2 持有同段另一副本，可分担或接管。",
+        "QN-2 已加载",
+        "data"
+      ],
+      [
+        "归并返回",
+        2,
+        0,
+        "MERGE",
+        "结果经 SN/Proxy 归并返回；用户无感拓扑。",
+        "查询成功",
+        "data"
+      ]
+    ],
+    "principle": "QN 副本换历史查询可用；SN/WAL 迁移换流式面可用——两层不要混为一谈。",
+    "tradeoff": "副本耗内存与加载时间；replica=1 时单 QN 故障即丢该历史视图能力。",
+    "pitfall": "副本不能替代对象存储与 etcd 耐久；也不是自动跨机房灾备说明书。",
+    "code": [
+      "collection.load(replica_number=2)",
+      "targets = mixCoord.pickHealthyQueryReplicas(shard)",
+      "return streamingNode.delegatedSearch(targets)"
+    ],
+    "sources": [
+      "replica",
+      "arch_overview",
+      "streaming_service"
+    ],
+    "related": [
+      "cdc-replication",
+      "query-node",
+      "mixcoord-meta",
+      "segment-lifecycle",
+      "load-release"
+    ],
+    "fault": {
+      "name": "QueryNode 宕机切换",
+      "nodes": [
+        "StreamingNode",
+        "故障 QN-1",
+        "存活 QN-2",
+        "MixCoord"
+      ],
+      "steps": [
+        [
+          "QN 心跳丢失",
+          1,
+          1,
+          "QN DOWN",
+          "QN-1 崩溃或网络隔离。",
+          "QN-1 不可用",
+          "local"
+        ],
+        [
+          "委托请求失败",
+          0,
+          1,
+          "RPC FAIL",
+          "SN 打向 QN-1 的检索失败/超时。",
+          "主路径中断",
+          "lost"
+        ],
+        [
+          "改写存活副本",
+          3,
+          2,
+          "REROUTE",
+          "MixCoord 更新查询视图，委托改打 QN-2。",
+          "QN-2 接管",
+          "control"
+        ],
+        [
+          "查询继续",
+          2,
+          0,
+          "SEARCH OK",
+          "仍有健康副本则可继续；副本耗尽需恢复或重新 Load。",
+          "降级可用",
+          "data"
+        ]
+      ],
+      "code": [
+        "if not healthy(qn1):",
+        "  targets = remainingReplicas(shard)",
+        "  if not targets: raise NoAvailableReplica",
+        "  return search(targets)"
+      ]
+    }
+  },
+  {
+    "group": 3,
     "id": "cdc-replication",
     "title": "CDC 主备复制与 Failover",
     "en": "CDC · PRIMARY / STANDBY",
