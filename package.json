@@ -1,7 +1,7 @@
 {
   "name": "milvus-systems-explorer",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node check-content.cjs && node check-isokit.cjs && node check-motion.cjs"
@@ -14,7 +14,7 @@
   "devDependencies": {
     "esbuild": "0.28.2"
   },
-  "description": "Milvus 3.0 Systems Explorer MVP",
+  "description": "Milvus 3.0 Systems Explorer Phase 2 (20 topics)",
   "allowScripts": {
     "esbuild@0.28.2": true
   }

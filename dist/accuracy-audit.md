@@ -1,4 +1,4 @@
-# Accuracy audit (MVP · Milvus 3.0)
+# Accuracy audit (Phase 2 · Milvus 3.0 · 20 topics)
 
 本文件诚实记录教学简化边界，**不声称**已对 Milvus 内部协议做形式化验证。
 
@@ -26,3 +26,12 @@
 ## 检查
 
 `npm run check` 校验 8 主题 / 16 场景 / 64 阶段的数据契约与 IsoKit 渲染，**不证明**协议正确。
+
+
+## Phase 2 旁注（文档版本偏斜）
+
+- 官方文档层名常写 **Coordinator**；本站教学称 **MixCoord**（见 Release Notes / 升级文档）。
+- Woodpecker 文档摘要仍写「Milvus 2.6」引入 → 3.0 仍为默认/推荐 WAL 之一。
+- Tiered Storage 文档写「2.6.4+」→ 教学按「自 2.6.4 引入，3.0 沿用」。
+- Storage V3 / Snapshots 依赖启用条件；默认关闭时勿假设特性已开。
+- CDC Failover 可能丢失未复制写入（RPO=lag）；与集群内 QueryNode replica 不是同一层 HA。
